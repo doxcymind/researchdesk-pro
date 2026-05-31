@@ -7,10 +7,12 @@ import { supabase } from '@/lib/supabase'
 /**
  * Auto-logout for Google OAuth users when the browser/tab is closed.
  *
- * sessionStorage is cleared automatically when the browser closes (unlike localStorage).
- * On each page load we check for a 'rd_tab' key:
- *   - Not present → browser was just opened fresh → sign out Google users
- *   - Present     → page was refreshed / navigated to → keep session alive
+ * sessionStorage is cleared when the browser closes (unlike localStorage).
+ * On each page load:
+ *   - If 'rd_tab' is present → in-session navigation or refresh → keep going
+ *   - If not present → either browser reopen OR fresh login
+ *     → distinguish via session creation time: if session was created < 2 min ago
+ *       it's a fresh login, so just set the flag. Otherwise sign out.
  */
 export function useSessionGuard() {
   const router = useRouter()
@@ -20,14 +22,22 @@ export function useSessionGuard() {
       const tabOpen = sessionStorage.getItem('rd_tab')
 
       if (!tabOpen) {
-        // Fresh browser open — check if logged in via Google and sign out
         const { data: { session } } = await supabase.auth.getSession()
+
         if (session) {
           const provider = session.user?.app_metadata?.provider
           if (provider === 'google') {
-            await supabase.auth.signOut()
-            router.replace('/')
-            return
+            // If the session was created in the last 2 minutes it's a fresh login — allow it
+            const createdAt = new Date(session.user.created_at ?? 0).getTime()
+            const lastSignIn = new Date(session.user.last_sign_in_at ?? 0).getTime()
+            const recentLogin = (Date.now() - Math.max(createdAt, lastSignIn)) < 2 * 60 * 1000
+
+            if (!recentLogin) {
+              // Browser was reopened with a stale session → sign out
+              await supabase.auth.signOut()
+              router.replace('/')
+              return
+            }
           }
         }
       }
