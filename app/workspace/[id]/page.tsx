@@ -379,7 +379,7 @@ export default function WorkspacePage() {
 
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, padding: '28px 32px', minHeight: 500 }}>
               {selectedSection === 'Overview' && (
-                <OverviewPanel projectId={project.id} studyType={project.study_type} />
+                <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} />
               )}
 
               {isEditorSection && (

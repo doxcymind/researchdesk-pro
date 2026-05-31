@@ -3,49 +3,30 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-interface Props { projectId: number; studyType?: string }
+interface Props { projectId: number; studyType?: string; manuscriptSections?: string[] }
 interface ChecklistItem { id: string; item: string; completed: boolean }
 
-const CHECKLIST_BY_TYPE: Record<string, string[]> = {
-  'Case Report':       ['Abstract completed', 'Introduction completed', 'Case Presentation completed', 'Discussion completed', 'Conclusion completed', 'References added', 'Images ready for publication', 'Ethics approval attached'],
-  'Case Series':       ['Abstract completed', 'Introduction completed', 'Case Presentations completed', 'Discussion completed', 'Conclusion completed', 'References added', 'Images ready for publication', 'Ethics approval attached'],
-  'Original Study':    ['Abstract completed', 'Introduction completed', 'Methods completed', 'Results completed', 'Discussion completed', 'Conclusion completed', 'References added', 'Images ready for publication', 'Ethics approval attached'],
-  'Review Article':    ['Abstract completed', 'Introduction completed', 'Search strategy defined', 'Results completed', 'Discussion completed', 'Conclusion completed', 'References added', 'Images ready for publication'],
-  'Systematic Review': ['Abstract completed', 'Introduction completed', 'PRISMA checklist done', 'Methods completed', 'Results completed', 'Discussion completed', 'References added', 'Images ready for publication'],
-  'Meta-Analysis':     ['Abstract completed', 'Introduction completed', 'Methods completed', 'Statistical analysis done', 'Results completed', 'Discussion completed', 'References added', 'Images ready for publication'],
-  'Thesis':            ['Abstract completed', 'Introduction completed', 'Literature Review completed', 'Methods completed', 'Results completed', 'Discussion completed', 'Conclusion completed', 'References added', 'Images ready for publication', 'IEC approval obtained'],
-  'Letter to Editor':  ['Abstract completed', 'Body completed', 'References added', 'Word count verified'],
-  'Audit':             ['Abstract completed', 'Introduction completed', 'Methods completed', 'Results completed', 'Discussion completed', 'Recommendations completed', 'References added', 'Images ready for publication'],
+/** Convert a sidebar section name → checklist item label */
+function sectionToCheckItem(s: string): string {
+  if (s === 'References') return 'References added'
+  return `${s} completed`
 }
 
-const DEFAULT_CHECKLIST = [
-  'Abstract completed', 'Introduction completed', 'Methods completed',
-  'Results completed', 'Discussion completed', 'References added', 'Ethics approval attached',
-]
-
-const SECTION_META: Record<string, { icon: string; label: string }> = {
-  'Abstract completed':           { icon: '✦', label: 'Abstract' },
-  'Introduction completed':       { icon: '⬡', label: 'Introduction' },
-  'Methods completed':            { icon: '⚙', label: 'Methods' },
-  'Results completed':            { icon: '◉', label: 'Results' },
-  'Discussion completed':         { icon: '◎', label: 'Discussion' },
-  'Conclusion completed':         { icon: '◈', label: 'Conclusion' },
-  'References added':             { icon: '⊞', label: 'References' },
-  'Ethics approval attached':     { icon: '⚖', label: 'Ethics' },
-  'Images ready for publication': { icon: '🖼', label: 'Images' },
-  'IEC approval obtained':        { icon: '⚖', label: 'IEC' },
-  'Case Presentation completed':  { icon: '📋', label: 'Case' },
-  'Case Presentations completed': { icon: '📋', label: 'Cases' },
-  'Literature Review completed':  { icon: '📖', label: 'Lit Review' },
-  'Search strategy defined':      { icon: '🔍', label: 'Search' },
-  'PRISMA checklist done':        { icon: '✦', label: 'PRISMA' },
-  'Statistical analysis done':    { icon: '📊', label: 'Stats' },
-  'Body completed':               { icon: '✦', label: 'Body' },
-  'Word count verified':          { icon: '◎', label: 'Words' },
-  'Recommendations completed':    { icon: '◈', label: 'Recs' },
+/** Icon for any checklist item */
+function itemIcon(item: string): string {
+  const map: Record<string, string> = {
+    'Abstract completed': '✦', 'Introduction completed': '⬡',
+    'Methods completed': '⚙', 'Results completed': '◉',
+    'Discussion completed': '◎', 'Conclusion completed': '◈',
+    'References added': '⊞', 'Ethics approval attached': '⚖',
+    'Images ready for publication': '🖼', 'IEC approval obtained': '⚖',
+  }
+  return map[item] ?? '◦'
 }
 
-export default function OverviewPanel({ projectId, studyType }: Props) {
+const DEFAULT_SECTIONS = ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'References']
+
+export default function OverviewPanel({ projectId, studyType, manuscriptSections }: Props) {
   const [documents, setDocuments]         = useState(0)
   const [drafts, setDrafts]               = useState(0)
   const [checksCompleted, setChecksCompleted] = useState(0)
@@ -76,7 +57,9 @@ export default function OverviewPanel({ projectId, studyType }: Props) {
       if (toDelete.length) await supabase.from('publication_checks').delete().in('id', toDelete).eq('user_id', user.id)
       return
     }
-    const defaults: string[] = (studyType && CHECKLIST_BY_TYPE[studyType]) ? CHECKLIST_BY_TYPE[studyType] : DEFAULT_CHECKLIST
+    // Derive checklist directly from the actual sidebar sections so they always match
+    const baseSections = manuscriptSections ?? DEFAULT_SECTIONS
+    const defaults: string[] = baseSections.map(sectionToCheckItem)
     await supabase.from('publication_checks').insert(
       defaults.map(item => ({ project_id: projectId, user_id: user.id, item, completed: false }))
     )
@@ -299,7 +282,7 @@ export default function OverviewPanel({ projectId, studyType }: Props) {
         {/* items */}
         <div className="overview-checklist-grid" style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           {checklist.map((item) => {
-            const meta = SECTION_META[item.item] || { icon: '·', label: item.item }
+            const icon = itemIcon(item.item)
             return (
               <button
                 key={item.id}
@@ -334,7 +317,7 @@ export default function OverviewPanel({ projectId, studyType }: Props) {
 
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: item.completed ? 'rgba(52,211,153,0.5)' : 'rgba(201,148,58,0.5)', flexShrink: 0 }}>{meta.icon}</span>
+                    <span style={{ fontSize: 10, color: item.completed ? 'rgba(52,211,153,0.5)' : 'rgba(201,148,58,0.5)', flexShrink: 0 }}>{icon}</span>
                     <span style={{
                       fontSize: 12.5, fontWeight: 500,
                       color: item.completed ? 'rgba(240,232,208,0.28)' : 'rgba(240,232,208,0.72)',
