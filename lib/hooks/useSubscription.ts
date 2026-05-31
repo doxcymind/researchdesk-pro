@@ -8,6 +8,7 @@ export type Plan = 'free' | 'scholar' | 'past_due'
 const WHITELISTED_EMAILS = [
   'nechmed0080@gmail.com',
   'gaur.gsvm@gmail.com',
+  'pheonixfire968@gmail.com',
 ]
 
 export function useSubscription() {
