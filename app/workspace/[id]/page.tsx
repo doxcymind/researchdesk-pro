@@ -58,6 +58,7 @@ export default function WorkspacePage() {
   const contentRef = useRef<HTMLElement>(null)
 
   const autosaveTimeout = useRef<NodeJS.Timeout | null>(null)
+  const contentRef2 = useRef<string>('')   // tracks latest content for beforeunload save
 
   const MANUSCRIPT_SECTIONS: Record<string, string[]> = {
     'Case Report':       ['Abstract', 'Introduction', 'Case Presentation', 'Discussion', 'Conclusion', 'References'],
@@ -83,6 +84,15 @@ export default function WorkspacePage() {
 
   useEffect(() => {
     fetchProject()
+  }, [])
+
+  // Save immediately on browser close / tab close so no work is lost
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (contentRef2.current) saveContent(contentRef2.current)
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
   }, [])
 
   useEffect(() => {
@@ -203,6 +213,7 @@ export default function WorkspacePage() {
 
   const handleContentChange = (value: string) => {
     setContent(value)
+    contentRef2.current = value  // keep ref in sync for beforeunload
 
     if (autosaveTimeout.current) {
       clearTimeout(autosaveTimeout.current)
