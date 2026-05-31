@@ -1,26 +1,368 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #080c18;
+  --foreground: #f0e8d0;
+  --gold: #c9943a;
+  --gold-light: #e8c878;
+  --gold-dark: #8b6914;
+  --navy: #080c18;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-playfair);
+  --font-royal: var(--font-cinzel);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-inter), 'DM Sans', system-ui, sans-serif;
+  overflow-x: hidden;
 }
+
+/* ── Royal typography ────────────────────────────────────────── */
+h1, h2 {
+  font-family: var(--font-cinzel), 'Cormorant Garamond', Georgia, serif;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+h3 {
+  font-family: var(--font-inter), 'DM Sans', system-ui, sans-serif;
+  font-weight: 600;
+}
+
+.font-royal  { font-family: var(--font-cinzel), Cinzel, 'Times New Roman', serif; }
+.font-display { font-family: var(--font-playfair), 'Playfair Display', Georgia, serif; }
+
+/* ── Aurora orbs ─────────────────────────────────────────────── */
+@keyframes orb1 {
+  0%   { transform: translate(0%, 0%)    scale(1);   }
+  25%  { transform: translate(8%, -12%) scale(1.08); }
+  50%  { transform: translate(-5%, 10%) scale(0.95); }
+  75%  { transform: translate(12%, 6%)  scale(1.05); }
+  100% { transform: translate(0%, 0%)    scale(1);   }
+}
+@keyframes orb2 {
+  0%   { transform: translate(0%, 0%)    scale(1);   }
+  33%  { transform: translate(-10%, 8%)  scale(1.1); }
+  66%  { transform: translate(6%, -14%) scale(0.92); }
+  100% { transform: translate(0%, 0%)    scale(1);   }
+}
+@keyframes orb3 {
+  0%   { transform: translate(0%, 0%)  scale(1);    }
+  40%  { transform: translate(14%, 10%) scale(1.06);}
+  80%  { transform: translate(-8%, -8%) scale(0.97);}
+  100% { transform: translate(0%, 0%)  scale(1);    }
+}
+@keyframes hueShift {
+  from { filter: hue-rotate(0deg) blur(70px); }
+  to   { filter: hue-rotate(40deg) blur(70px); }
+}
+
+.orb-1 { animation: orb1 22s ease-in-out infinite, hueShift 18s linear infinite; }
+.orb-2 { animation: orb2 28s ease-in-out infinite, hueShift 24s linear infinite reverse; }
+.orb-3 { animation: orb3 18s ease-in-out infinite, hueShift 14s linear infinite; }
+
+/* ── Floating ────────────────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px) rotate(-1deg); }
+  50%       { transform: translateY(-18px) rotate(1deg); }
+}
+@keyframes floatDash {
+  0%, 100% { transform: perspective(1400px) rotateY(-8deg) rotateX(3deg) translateY(0px); }
+  50%       { transform: perspective(1400px) rotateY(-6deg) rotateX(2deg) translateY(-10px); }
+}
+
+.logo-float  { animation: float 7s ease-in-out infinite; }
+.dash-float  { animation: floatDash 6s ease-in-out infinite; }
+
+/* ── Shimmer text ────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+.text-shimmer {
+  background: linear-gradient(90deg, #c9943a 0%, #f0d080 30%, #c9943a 50%, #e8b84a 70%, #c9943a 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: shimmer 4s linear infinite;
+}
+
+/* ── Fluid text ──────────────────────────────────────────────── */
+@keyframes fluidGold {
+  0%   { background-position: 0% 50%; }
+  50%  { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+@keyframes textBreath {
+  0%, 100% { letter-spacing: -0.025em; opacity: 1; }
+  50%       { letter-spacing: -0.01em;  opacity: 0.92; }
+}
+@keyframes wordFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-4px); }
+}
+.text-fluid {
+  background: linear-gradient(270deg, #c9943a, #f0d890, #e8b84a, #fde68a, #c9943a);
+  background-size: 400% 400%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: fluidGold 6s ease infinite, textBreath 4s ease-in-out infinite;
+  display: inline-block;
+}
+.headline-word {
+  display: inline-block;
+  animation: wordFloat 5s ease-in-out infinite;
+}
+.headline-word:nth-child(1) { animation-delay: 0s; }
+.headline-word:nth-child(2) { animation-delay: 0.3s; }
+.headline-word:nth-child(3) { animation-delay: 0.6s; }
+
+/* ── Glow pulse on badge ─────────────────────────────────────── */
+@keyframes badgeGlow {
+  0%, 100% { box-shadow: 0 0 12px rgba(201,148,58,0.08), 0 2px 20px rgba(201,148,58,0.08); }
+  50%       { box-shadow: 0 0 28px rgba(201,148,58,0.22), 0 2px 30px rgba(201,148,58,0.18); }
+}
+.badge-glow { animation: badgeGlow 3.5s ease-in-out infinite; }
+
+/* ── Pulse ring ──────────────────────────────────────────────── */
+@keyframes pulseRing {
+  0%   { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(201,148,58,0.4); }
+  70%  { transform: scale(1);    box-shadow: 0 0 0 14px rgba(201,148,58,0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(201,148,58,0);   }
+}
+.pulse-ring { animation: pulseRing 2.5s ease-out infinite; }
+
+/* ── Fade-up on load ─────────────────────────────────────────── */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+.fade-up-1 { animation: fadeUp 0.7s ease forwards; }
+.fade-up-2 { animation: fadeUp 0.7s 0.15s ease forwards; opacity: 0; }
+.fade-up-3 { animation: fadeUp 0.7s 0.30s ease forwards; opacity: 0; }
+.fade-up-4 { animation: fadeUp 0.7s 0.45s ease forwards; opacity: 0; }
+.fade-up-5 { animation: fadeUp 0.7s 0.60s ease forwards; opacity: 0; }
+
+/* ── Stars twinkle ───────────────────────────────────────────── */
+@keyframes twinkle {
+  0%, 100% { opacity: 0.3; }
+  50%       { opacity: 1;   }
+}
+
+/* ── Grid line drift ─────────────────────────────────────────── */
+@keyframes gridDrift {
+  from { background-position: 0 0; }
+  to   { background-position: 80px 80px; }
+}
+.grid-drift {
+  animation: gridDrift 12s linear infinite;
+}
+
+/* ── Card hover glow ─────────────────────────────────────────── */
+.card-3d {
+  transition: transform 0.4s cubic-bezier(0.23,1,0.32,1),
+              box-shadow 0.4s ease;
+}
+.card-3d:hover {
+  transform: perspective(1400px) rotateY(-4deg) rotateX(1deg) translateY(-6px) scale(1.01);
+  box-shadow: 0 50px 120px rgba(0,0,0,0.95), 0 0 80px rgba(201,148,58,0.18) !important;
+}
+
+/* ── Feature card hover ──────────────────────────────────────── */
+.feat-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
+}
+.feat-card:hover {
+  transform: translateY(-6px) scale(1.03);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 30px rgba(201,148,58,0.15);
+  border-color: rgba(201,148,58,0.45) !important;
+}
+
+/* ── Nav link hover ──────────────────────────────────────────── */
+.nav-link {
+  position: relative;
+  transition: color 0.25s ease;
+}
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: -3px; left: 0;
+  width: 0; height: 1px;
+  background: #c9943a;
+  transition: width 0.3s ease;
+}
+.nav-link:hover { color: #c9943a !important; }
+.nav-link:hover::after { width: 100%; }
+
+/* ── Workflow node glow ──────────────────────────────────────── */
+@keyframes nodeActivate {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(201,148,58,0); border-color: rgba(201,148,58,0.35); }
+  50%       { box-shadow: 0 0 22px rgba(201,148,58,0.75), 0 0 44px rgba(201,148,58,0.3); border-color: rgba(201,148,58,1); }
+}
+@keyframes nodeRing {
+  0%   { transform: scale(1);   opacity: 0.55; }
+  100% { transform: scale(1.7); opacity: 0; }
+}
+@keyframes dotFlow {
+  0%   { transform: translateX(-110%); }
+  100% { transform: translateX(110%); }
+}
+@keyframes cardFloat {
+  0%, 100% { transform: translateY(0px); }
+  50%       { transform: translateY(-6px); }
+}
+
+/* ── Scrollbar ───────────────────────────────────────────────── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: #080c18; }
+::-webkit-scrollbar-thumb { background: rgba(201,148,58,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(201,148,58,0.55); }
+
+/* ══════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — class-based approach
+══════════════════════════════════════════════════════════════ */
+
+/* Hero layout */
+.hero-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 56px 60px;
+  gap: 40px;
+  min-height: calc(100vh - 75px);
+  position: relative;
+  z-index: 10;
+}
+.hero-left  { max-width: 560px; width: 48%; flex-shrink: 0; }
+.hero-right { flex: 1; }
+
+/* Grids */
+.grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+.grid-2 { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
+.grid-auto { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+
+/* Workspace layout */
+.workspace-layout { display: flex; min-height: 100vh; }
+.workspace-sidebar {
+  width: 240px; flex-shrink: 0;
+  background: rgba(255,255,255,0.02);
+  border-right: 1px solid rgba(201,148,58,0.12);
+  display: flex; flex-direction: column;
+  padding: 28px 0;
+  position: sticky; top: 0; height: 100vh;
+}
+.workspace-content { flex: 1; padding: 32px 36px; overflow-y: auto; }
+
+/* Section padding */
+.section-pad { padding: 100px 56px; }
+
+/* Floating icons layer */
+.floating-icons { position: fixed; inset: 0; z-index: 1; pointer-events: none; overflow: hidden; }
+
+@media (max-width: 768px) {
+
+  /* ── Workspace page: stack vertically so mobile nav sits on top ── */
+  .workspace-page-root { flex-direction: column !important; }
+
+  /* ── Floating icons: hide ── */
+  .floating-icons { display: none !important; }
+
+  /* ── Nav ── */
+  .nav-links-desktop { display: none !important; }
+  nav { padding: 12px 16px !important; }
+
+  /* ── Hero ── */
+  .hero-section {
+    flex-direction: column !important;
+    padding: 32px 20px 48px !important;
+    gap: 40px !important;
+    min-height: auto !important;
+    align-items: flex-start !important;
+  }
+  .hero-left {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .hero-right {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* ── Badge: fix text wrap ── */
+  .badge-glow {
+    font-size: 9px !important;
+    letter-spacing: 0.1em !important;
+    padding: 6px 14px !important;
+  }
+
+  /* ── Headline ── */
+  .hero-section h1 { font-size: 2.6rem !important; }
+
+  /* ── Grids → single column ── */
+  .grid-3, .grid-2 { grid-template-columns: 1fr !important; gap: 14px !important; }
+  .grid-auto { grid-template-columns: 1fr !important; }
+
+  /* ── Section padding ── */
+  .section-pad { padding: 48px 20px !important; }
+
+  /* ── Stats row ── */
+  .stats-row { flex-wrap: wrap !important; gap: 20px !important; }
+
+  /* ── Workspace: stack ── */
+  .workspace-layout { flex-direction: column !important; }
+  .workspace-sidebar {
+    width: 100% !important;
+    height: auto !important;
+    min-height: auto !important;
+    flex-direction: row !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    padding: 8px 12px !important;
+    border-right: none !important;
+    border-bottom: 1px solid rgba(201,148,58,0.15) !important;
+    position: static !important;
+  }
+  .workspace-sidebar-bottom { display: none !important; }
+  .workspace-content { padding: 16px !important; }
+
+  /* ── Editor review panel ── */
+  .review-panel { display: none !important; }
+  .editor-textarea { height: 300px !important; }
+
+  /* ── Login ── */
+  .login-left  { display: none !important; }
+  .login-right {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding: 32px 20px !important;
+    border-left: none !important;
+  }
+
+  /* ── Contact / Settings 2-col ── */
+  .two-col { grid-template-columns: 1fr !important; }
+
+  /* ── Footer ── */
+  footer {
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding: 20px !important;
+    text-align: center !important;
+  }
+
+  /* ── Dashboard cards ── */
+  .dashboard-grid { grid-template-columns: 1fr !important; }
+}
+
