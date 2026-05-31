@@ -121,8 +121,20 @@ export default function SettingsPage() {
           <div style={{ height: 1, background: 'linear-gradient(90deg, rgba(201,148,58,0.35), transparent)', marginTop: 24 }}/>
         </div>
 
-        {/* Zotero Card */}
-        <div style={{ background: 'rgba(255,255,255,0.025)', border: `1px solid ${status === 'connected' ? 'rgba(52,211,153,0.25)' : status === 'error' ? 'rgba(248,113,113,0.25)' : 'rgba(201,148,58,0.15)'}`, borderRadius: 20, overflow: 'hidden', transition: 'border-color 0.3s' }}>
+        {/* Tools link */}
+        <div style={{ marginBottom: 24, padding: '18px 22px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(201,148,58,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0', margin: '0 0 3px' }}>🔧 Tools & Integrations</p>
+            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>Connect Zotero, PubMed, Mendeley and more</p>
+          </div>
+          <Link href="/tools" style={{ fontSize: 12, fontWeight: 700, color: '#c9943a', textDecoration: 'none', padding: '8px 18px', borderRadius: 9, border: '1px solid rgba(201,148,58,0.25)', background: 'rgba(201,148,58,0.07)', whiteSpace: 'nowrap' }}
+            onMouseEnter={e => (e.currentTarget.style.background='rgba(201,148,58,0.14)')}
+            onMouseLeave={e => (e.currentTarget.style.background='rgba(201,148,58,0.07)')}
+          >Open Tools →</Link>
+        </div>
+
+        {/* Zotero Card — moved to /tools, keep stub hidden */}
+        <div style={{ display: 'none', background: 'rgba(255,255,255,0.025)', border: `1px solid ${status === 'connected' ? 'rgba(52,211,153,0.25)' : status === 'error' ? 'rgba(248,113,113,0.25)' : 'rgba(201,148,58,0.15)'}`, borderRadius: 20, overflow: 'hidden', transition: 'border-color 0.3s' }}>
           {/* Card top bar */}
           <div style={{ height: 2, background: status === 'connected' ? 'linear-gradient(90deg, transparent, rgba(52,211,153,0.5), transparent)' : 'linear-gradient(90deg, transparent, rgba(201,148,58,0.4), transparent)' }}/>
 
@@ -274,14 +286,6 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* More integrations coming soon */}
-        <div style={{ marginTop: 24, padding: '20px 24px', borderRadius: 16, background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div style={{ fontSize: 20, opacity: 0.3 }}>🔮</div>
-          <div>
-            <p style={{ fontSize: 13, fontWeight: 600, color: 'rgba(240,232,208,0.3)', margin: '0 0 3px' }}>More integrations coming soon</p>
-            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', margin: 0 }}>PubMed, Mendeley, Google Scholar, Endnote</p>
-          </div>
-        </div>
       </main>
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
