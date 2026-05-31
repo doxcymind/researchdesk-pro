@@ -7,7 +7,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import LiveClock from '@/lib/components/dashboard/LiveClock'
 import PubMedFeed from '@/lib/components/dashboard/PubMedFeed'
-import DashboardAIChat from '@/lib/components/dashboard/DashboardAIChat'
+import WorkflowGuide from '@/lib/components/dashboard/WorkflowGuide'
 
 const NAV = [
   { label: 'Overview',    icon: '◈', href: '/dashboard' },
@@ -221,8 +221,8 @@ export default function DashboardPage() {
 
         {loaded && <>
 
-          {/* ── AI ASSISTANT ── */}
-          <DashboardAIChat displayName={displayName} projects={projects} />
+          {/* ── WORKFLOW GUIDE ── */}
+          <WorkflowGuide />
 
           {/* ── ONBOARDING BANNER ── */}
           {showOnboarding && (
