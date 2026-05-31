@@ -18,18 +18,6 @@ const NAV = [
   { label: 'Settings',    icon: '⚙', href: '/settings' },
 ]
 
-const STUDY_COLORS: Record<string, { color: string; bg: string; border: string }> = {
-  'Case Report':       { color: '#c9943a',  bg: 'rgba(201,148,58,0.1)',  border: 'rgba(201,148,58,0.25)' },
-  'Thesis':            { color: '#a78bfa',  bg: 'rgba(167,139,250,0.1)', border: 'rgba(167,139,250,0.25)' },
-  'Review Article':    { color: '#60a5fa',  bg: 'rgba(96,165,250,0.1)',  border: 'rgba(96,165,250,0.25)' },
-  'Original Study':    { color: '#34d399',  bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.25)' },
-  'Meta-Analysis':     { color: '#fbbf24',  bg: 'rgba(251,191,36,0.1)',  border: 'rgba(251,191,36,0.25)' },
-  'Case Series':       { color: '#fb923c',  bg: 'rgba(249,115,22,0.1)',  border: 'rgba(249,115,22,0.25)' },
-  'Systematic Review': { color: '#34d399',  bg: 'rgba(52,211,153,0.1)',  border: 'rgba(52,211,153,0.25)' },
-  'Audit':             { color: '#e879f9',  bg: 'rgba(232,121,249,0.1)', border: 'rgba(232,121,249,0.25)' },
-  'Letter to Editor':  { color: '#f0e8d0',  bg: 'rgba(240,232,208,0.07)',border: 'rgba(240,232,208,0.15)' },
-}
-const DEFAULT_COLOR = { color: 'rgba(240,232,208,0.5)', bg: 'rgba(255,255,255,0.06)', border: 'rgba(255,255,255,0.1)' }
 
 /* animated counter */
 function useCounter(target: number, duration = 900, trigger = false) {
@@ -96,20 +84,6 @@ export default function DashboardPage() {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
 
-  /* card tilt */
-  const tiltCard = (e: React.MouseEvent<HTMLDivElement>) => {
-    const r = e.currentTarget.getBoundingClientRect()
-    const x = (e.clientX - r.left) / r.width  - 0.5
-    const y = (e.clientY - r.top)  / r.height - 0.5
-    e.currentTarget.style.transform = `perspective(700px) rotateY(${x*10}deg) rotateX(${-y*7}deg) translateY(-4px)`
-    e.currentTarget.style.borderColor = 'rgba(201,148,58,0.35)'
-    e.currentTarget.style.boxShadow   = '0 20px 50px rgba(0,0,0,0.5), 0 0 20px rgba(201,148,58,0.08)'
-  }
-  const resetCard = (e: React.MouseEvent<HTMLDivElement>) => {
-    e.currentTarget.style.transform  = ''
-    e.currentTarget.style.borderColor= 'rgba(255,255,255,0.08)'
-    e.currentTarget.style.boxShadow  = 'none'
-  }
 
   return (
     <div className="workspace-layout" style={{ background: '#080c18', fontFamily: "var(--font-inter), 'DM Sans', system-ui, sans-serif", color: '#f0e8d0' }}>
@@ -298,101 +272,42 @@ export default function DashboardPage() {
             ))}
           </div>
 
-          {/* ── PROJECTS ── */}
-          <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div>
-              <h2 style={{ fontSize: 18, fontWeight: 600, color: '#f0e8d0', margin: 0, fontFamily: "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif" }}>Your Projects</h2>
-              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.3)', margin: '4px 0 0' }}>{projects.length} workspace{projects.length !== 1 ? 's' : ''} total</p>
-            </div>
-            <Link href="/projects" style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', textDecoration: 'none', letterSpacing: '0.04em',
-              transition: 'color 0.2s' }}
-              onMouseEnter={e => (e.currentTarget.style.color = '#c9943a')}
-              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(240,232,208,0.35)')}
-            >View all →</Link>
+          {/* ── QUICK ACTIONS ── */}
+          <div style={{ display: 'flex', gap: 12, marginBottom: 32 }}>
+            <Link href="/projects" style={{
+              flex: 1, textDecoration: 'none', padding: '16px 20px', borderRadius: 14,
+              background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.18s',
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(201,148,58,0.3)'; (e.currentTarget as HTMLElement).style.background='rgba(201,148,58,0.06)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)' }}
+            >
+              <span style={{ fontSize: 20 }}>⬡</span>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0', margin: 0 }}>My Projects</p>
+                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.35)', margin: 0 }}>{projects.length} workspace{projects.length !== 1 ? 's' : ''}</p>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: 14, color: 'rgba(201,148,58,0.4)' }}>→</span>
+            </Link>
+            <Link href="/new-project" style={{
+              flex: 1, textDecoration: 'none', padding: '16px 20px', borderRadius: 14,
+              background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)',
+              display: 'flex', alignItems: 'center', gap: 12, transition: 'all 0.18s',
+            }}
+              onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(201,148,58,0.3)'; (e.currentTarget as HTMLElement).style.background='rgba(201,148,58,0.06)' }}
+              onMouseLeave={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(255,255,255,0.07)'; (e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.025)' }}
+            >
+              <span style={{ fontSize: 20 }}>+</span>
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0', margin: 0 }}>New Project</p>
+                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.35)', margin: 0 }}>Start a new manuscript</p>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: 14, color: 'rgba(201,148,58,0.4)' }}>→</span>
+            </Link>
           </div>
-
-          {projects.length === 0 ? (
-            <div style={{
-              background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(201,148,58,0.15)',
-              borderRadius: 20, padding: '60px 40px', textAlign: 'center',
-            }}>
-              <div style={{ fontSize: 36, marginBottom: 14, opacity: 0.2 }}>⬡</div>
-              <p style={{ color: 'rgba(240,232,208,0.35)', fontSize: 14, marginBottom: 20 }}>No projects yet. Start your first research workspace.</p>
-              <Link href="/new-project" style={{
-                textDecoration: 'none', display: 'inline-block',
-                background: 'linear-gradient(135deg, #c9943a, #e8b84a)',
-                color: '#080c18', fontWeight: 700, fontSize: 13,
-                padding: '11px 26px', borderRadius: 10,
-              }}>Create Project</Link>
-            </div>
-          ) : (
-            <div className="grid-auto" style={{ gap: 14 }}>
-              {projects.map((p, idx) => {
-                const badge = STUDY_COLORS[p.study_type] || DEFAULT_COLOR
-                return (
-                  <Link key={p.id} href={`/workspace/${p.id}`} style={{ textDecoration: 'none', display: 'block' }}>
-                    <div
-                      onMouseMove={tiltCard}
-                      onMouseLeave={resetCard}
-                      style={{
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.08)',
-                        borderRadius: 16, padding: '20px 22px',
-                        cursor: 'pointer',
-                        transition: 'transform 0.15s ease, border-color 0.2s, box-shadow 0.2s',
-                        position: 'relative', overflow: 'hidden',
-                        // staggered fade-in
-                        animation: `fadeInUp 0.4s ${idx * 0.06}s both`,
-                      }}>
-                      {/* top tint line matching study type */}
-                      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: `linear-gradient(90deg, transparent, ${badge.color}55, transparent)` }}/>
-
-                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 14 }}>
-                        <div style={{
-                          width: 38, height: 38, borderRadius: 10,
-                          background: badge.bg, border: `1px solid ${badge.border}`,
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
-                        }}>📄</div>
-                        <span style={{
-                          fontSize: 10, fontWeight: 700, padding: '3px 10px', borderRadius: 20,
-                          background: 'rgba(52,211,153,0.1)', color: '#34d399',
-                          border: '1px solid rgba(52,211,153,0.2)', letterSpacing: '0.04em',
-                        }}>Active</span>
-                      </div>
-
-                      <h3 style={{ fontSize: 14, fontWeight: 600, color: '#f0e8d0', marginBottom: 6, lineHeight: 1.4, textTransform: 'capitalize' }}>{p.title}</h3>
-
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
-                        <span style={{
-                          fontSize: 10, fontWeight: 600, padding: '3px 9px', borderRadius: 20,
-                          background: badge.bg, color: badge.color, border: `1px solid ${badge.border}`,
-                        }}>{p.study_type || 'Research'}</span>
-                        <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.25)' }}>
-                          {new Date(p.created_at).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                        </span>
-                      </div>
-                      <div style={{ marginTop: 12, padding: '7px 14px', borderRadius: 8, background: 'rgba(201,148,58,0.07)', border: '1px solid rgba(201,148,58,0.15)', textAlign: 'center', fontSize: 12, color: 'rgba(201,148,58,0.7)', fontWeight: 600, letterSpacing: '0.03em' }}>
-                        Open Workspace →
-                      </div>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          )}
 
           {/* PubMed Feed */}
           <PubMedFeed />
-
-          {/* Quick tip */}
-          {projects.length > 0 && (
-            <div style={{ marginTop: 28, padding: '14px 20px', background: 'rgba(201,148,58,0.04)', border: '1px solid rgba(201,148,58,0.12)', borderRadius: 12, display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 14, opacity: 0.7 }}>💡</span>
-              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', margin: 0 }}>
-                Open a project to see its readiness score, manuscript progress, and AI reviewer feedback.
-              </p>
-            </div>
-          )}
         </>}
         </div>
       </main>
