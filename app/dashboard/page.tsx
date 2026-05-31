@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import LiveClock from '@/lib/components/dashboard/LiveClock'
 import PubMedFeed from '@/lib/components/dashboard/PubMedFeed'
 import WorkflowGuide from '@/lib/components/dashboard/WorkflowGuide'
+import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
 
 const NAV = [
   { label: 'Overview',    icon: '◈', href: '/dashboard' },
@@ -49,6 +50,7 @@ function useCounter(target: number, duration = 900, trigger = false) {
 }
 
 export default function DashboardPage() {
+  useSessionGuard()
   const [email, setEmail]       = useState('')
   const [displayName, setDisplayName] = useState('')
   const [projects, setProjects] = useState<any[]>([])

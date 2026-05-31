@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/api-fetch'
 
+import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
 import Sidebar from '../../../lib/components/workspace/Sidebar'
 import WorkspaceHeader from '../../../lib/components/workspace/WorkspaceHeader'
 import OverviewPanel from '../../../lib/components/workspace/OverviewPanel'
@@ -32,6 +33,7 @@ interface Project {
 export default function WorkspacePage() {
   const params = useParams()
   const router = useRouter()
+  useSessionGuard()
 
   const [project, setProject] =
     useState<Project | null>(null)
