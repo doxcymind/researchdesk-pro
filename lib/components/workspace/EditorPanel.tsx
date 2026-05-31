@@ -319,16 +319,16 @@ export default function EditorPanel({
       </div>
 
       {/* ── Right: Review Panel ── */}
+      {(reviewData || reviewing) && (
       <div className="editor-review-panel" style={{
-        width: reviewData || reviewing ? 320 : 0,
+        width: 320,
         flexShrink: 0,
         overflow: 'hidden',
-        transition: 'width 0.35s cubic-bezier(0.23,1,0.32,1)',
       }}>
         <div
           ref={panelRef}
           style={{
-            width: 320,
+            width: '100%',
             height: 560,
             overflowY: 'auto',
             background: 'rgba(255,255,255,0.03)',
@@ -338,8 +338,6 @@ export default function EditorPanel({
             display: 'flex',
             flexDirection: 'column',
             gap: 16,
-            opacity: reviewData || reviewing ? 1 : 0,
-            transition: 'opacity 0.3s ease',
           }}
         >
           {/* Panel header */}
@@ -419,13 +417,14 @@ export default function EditorPanel({
           )}
         </div>
       </div>
+      )}
 
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @media (max-width: 768px) {
           .editor-root { flex-direction: column !important; }
           .editor-review-panel { width: 100% !important; }
-          .editor-review-panel > div { width: 100% !important; height: auto !important; max-height: 480px; }
+          .editor-review-panel > div { width: 100% !important; height: auto !important; max-height: 520px; }
         }
       `}</style>
     </div>
