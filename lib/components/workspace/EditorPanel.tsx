@@ -21,8 +21,6 @@ interface EditorPanelProps {
   content: string
   setContent: (value: string) => void
   saving: boolean
-  generating: boolean
-  onGenerate: () => void
   reviewing: boolean
   reviewData: ReviewData | null
   onReview: () => void

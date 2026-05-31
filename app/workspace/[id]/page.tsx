@@ -47,7 +47,7 @@ export default function WorkspacePage() {
     useState(false)
 
   const [reviewing, setReviewing] = useState(false)
-  const [reviewData, setReviewData] = useState<{ score: number; summary: string; issues: { type: 'error' | 'warning' | 'success'; title: string; detail: string }[] } | null>(null)
+  const [reviewData, setReviewData] = useState<{ score: number; summary: string; mentor_note: string; issues: { type: 'error' | 'warning' | 'success'; title: string; detail: string; question?: string }[] } | null>(null)
 
   const [loading, setLoading] = useState(true)
   const [showScrollTop, setShowScrollTop] = useState(false)
@@ -388,8 +388,6 @@ export default function WorkspacePage() {
                   content={content}
                   setContent={handleContentChange}
                   saving={saving}
-                  generating={generating}
-                  onGenerate={generateDraft}
                   reviewing={reviewing}
                   reviewData={reviewData}
                   onReview={reviewSection}
