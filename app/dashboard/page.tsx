@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import LiveClock from '@/lib/components/dashboard/LiveClock'
 import PubMedFeed from '@/lib/components/dashboard/PubMedFeed'
+import DashboardAIChat from '@/lib/components/dashboard/DashboardAIChat'
 
 const NAV = [
   { label: 'Overview',    icon: '◈', href: '/dashboard' },
@@ -220,6 +221,9 @@ export default function DashboardPage() {
 
         {loaded && <>
 
+          {/* ── AI ASSISTANT ── */}
+          <DashboardAIChat displayName={displayName} projects={projects} />
+
           {/* ── ONBOARDING BANNER ── */}
           {showOnboarding && (
             <div style={{ marginBottom: 28, padding: '22px 28px', borderRadius: 18, background: 'linear-gradient(135deg, rgba(201,148,58,0.08), rgba(201,148,58,0.03))', border: '1px solid rgba(201,148,58,0.25)', position: 'relative', overflow: 'hidden' }}>
@@ -389,6 +393,7 @@ export default function DashboardPage() {
         </>}
         </div>
       </main>
+
 
       <style>{`
         @keyframes fadeInUp {
