@@ -37,11 +37,19 @@ export async function POST(req: Request) {
 
   const supabase = getAdmin()
 
-  // Any non-success status → mark as error
-  if (body.status !== 410) {
+  // Copyleaks status codes:
+  // 1 = Submitted/queued, 2 = Processing → still running, ignore
+  // 410 = Completed successfully → fetch results
+  // 420, 500+ = Error states → mark failed
+  const status = body.status ?? 0
+  if (status === 1 || status === 2) {
+    // Still in progress — do nothing, wait for next webhook
+    return new Response('ok', { status: 200 })
+  }
+  if (status !== 410) {
     await supabase
       .from('plagiarism_scans')
-      .update({ status: 'error', error_message: `Scan failed with status ${body.status}` })
+      .update({ status: 'error', error_message: `Scan failed with status ${status}` })
       .eq('scan_id', scanId)
     return new Response('ok', { status: 200 })
   }
