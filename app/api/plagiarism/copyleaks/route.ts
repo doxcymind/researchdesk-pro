@@ -71,10 +71,9 @@ export async function POST(req: Request) {
           filename: `manuscript_${scanId}.txt`,
           properties: {
             webhooks: {
-              status: `${SITE_URL}/api/plagiarism/copyleaks/webhook`,
+              // Embed scanId in URL — more reliable than developerPayload
+              status: `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
             },
-            // Pass scanId back in developerPayload so webhook knows which record to update
-            developerPayload: scanId,
             sensitiveDataProtection: { anonymizeText: true },
             scanning: { internet: true, copyleaksDatabaseAccess: true },
           },

@@ -23,17 +23,17 @@ async function getCopyleaksToken(): Promise<string> {
 }
 
 export async function POST(req: Request) {
-  // Copyleaks sends a webhook when the scan status changes
-  // Status 410 = completed successfully
-  let body: { status?: number; developerPayload?: string; error?: unknown }
+  // scanId is embedded in the webhook URL as ?scanId=...
+  const { searchParams } = new URL(req.url)
+  const scanId = searchParams.get('scanId')
+  if (!scanId) return new Response('ok', { status: 200 })
+
+  let body: { status?: number; error?: unknown }
   try {
     body = await req.json()
   } catch {
     return new Response('ok', { status: 200 })
   }
-
-  const scanId = body.developerPayload
-  if (!scanId) return new Response('ok', { status: 200 })
 
   const supabase = getAdmin()
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   // 1 = Submitted/queued, 2 = Processing → still running, ignore
   // 410 = Completed successfully → fetch results
   // 420, 500+ = Error states → mark failed
-  const status = body.status ?? 0
+  const status = Number(body.status ?? 0)
   if (status === 1 || status === 2) {
     // Still in progress — do nothing, wait for next webhook
     return new Response('ok', { status: 200 })
