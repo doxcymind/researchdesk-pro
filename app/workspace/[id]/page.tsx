@@ -48,9 +48,6 @@ export default function WorkspacePage() {
 
   const [saving, setSaving] = useState(false)
 
-  const [generating, setGenerating] =
-    useState(false)
-
   const [reviewing, setReviewing] = useState(false)
   const [reviewData, setReviewData] = useState<{ score: number; summary: string; mentor_note: string; issues: { type: 'error' | 'warning' | 'success'; title: string; detail: string; question?: string }[] } | null>(null)
 
@@ -268,39 +265,6 @@ export default function WorkspacePage() {
       router.push('/projects')
     } catch (error) {
       console.error('deleteProject error:', error)
-    }
-  }
-
-  const generateDraft = async () => {
-    if (!project) return
-    if (!isScholar) { setUpgradeFeature('AI Draft Generation'); return }
-
-    try {
-      setGenerating(true)
-
-      const response = await apiFetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          section: selectedSection,
-          topic: project.title,
-          projectId: project.id,
-        }),
-      })
-
-      const data = await response.json()
-
-      if (data.text) {
-        setContent(data.text)
-        await saveContent(data.text)
-        await logActivity(`Generated draft for ${selectedSection}`)
-      } else {
-        console.error('Generation failed:', data.error)
-      }
-    } catch (error) {
-      console.error('generateDraft error:', error)
-    } finally {
-      setGenerating(false)
     }
   }
 
