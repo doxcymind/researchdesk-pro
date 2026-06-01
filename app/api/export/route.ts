@@ -30,6 +30,72 @@ export async function POST(req: NextRequest) {
     const contentMap: Record<string, string> = {}
     for (const row of (rows || [])) contentMap[row.section] = row.content
 
+    // AI Citation placement
+    interface CitationEntry { text: string; style: string; input: string }
+    let citations: CitationEntry[] = []
+    try {
+      if (contentMap['__citations__']) citations = JSON.parse(contentMap['__citations__'])
+    } catch {}
+
+    if (citations.length > 0) {
+      // Build full manuscript text
+      const manuscriptText = sections
+        .map((s: string) => `## ${s}\n${contentMap[s]?.trim() || ''}`)
+        .join('\n\n')
+
+      // Build numbered reference list
+      const refList = citations.map((c, i) => `[${i + 1}] ${c.text}`).join('\n')
+
+      const aiPrompt = `You are a scientific manuscript editor. Insert citation numbers into the manuscript text where each reference is relevant.
+
+REFERENCES:
+${refList}
+
+MANUSCRIPT:
+${manuscriptText}
+
+INSTRUCTIONS:
+- Insert citation numbers like [1], [2], [1,3] directly in the text where each reference supports a claim.
+- Do not change any wording — only insert citation numbers.
+- Return only the modified manuscript, preserving the ## Section headings.
+- If a reference does not fit anywhere, do not force it.`
+
+      try {
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+          },
+          body: JSON.stringify({
+            model: 'llama3-70b-8192',
+            messages: [{ role: 'user', content: aiPrompt }],
+            temperature: 0.1,
+            max_tokens: 8000,
+          }),
+        })
+
+        if (groqRes.ok) {
+          const groqData = await groqRes.json()
+          const annotated = groqData.choices?.[0]?.message?.content || ''
+          if (annotated) {
+            // Parse annotated text back into contentMap sections
+            const sectionRegex = /## (.+?)\n([\s\S]*?)(?=## |\s*$)/g
+            let match
+            while ((match = sectionRegex.exec(annotated)) !== null) {
+              const sectionName = match[1].trim()
+              const sectionContent = match[2].trim()
+              if (contentMap[sectionName] !== undefined) {
+                contentMap[sectionName] = sectionContent
+              }
+            }
+          }
+        }
+      } catch (aiErr) {
+        console.error('AI citation placement failed, continuing without:', aiErr)
+      }
+    }
+
     // Parse authors if stored
     interface Author { name: string; email: string; affiliation: string; orcid: string; corresponding: boolean }
     let authors: Author[] = []
@@ -156,6 +222,24 @@ export async function POST(req: NextRequest) {
           ],
         }))
       }
+    }
+
+    // References section
+    if (citations.length > 0) {
+      docChildren.push(new Paragraph({
+        text: 'References',
+        heading: HeadingLevel.HEADING_1,
+        spacing: { before: 400, after: 200 },
+      }))
+      citations.forEach((c, i) => {
+        docChildren.push(new Paragraph({
+          spacing: { after: 120 },
+          children: [
+            new TextRun({ text: `[${i + 1}] `, bold: true, size: 22 }),
+            new TextRun({ text: c.text, size: 22 }),
+          ],
+        }))
+      })
     }
 
     // Footer note

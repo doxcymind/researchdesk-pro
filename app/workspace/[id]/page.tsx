@@ -20,7 +20,6 @@ import SubmissionChecklist from '../../../lib/components/workspace/SubmissionChe
 import AuthorsPanel from '../../../lib/components/workspace/AuthorsPanel'
 import ClinicalTrialsPanel from '../../../lib/components/workspace/ClinicalTrialsPanel'
 import DOIResolverPanel from '../../../lib/components/workspace/DOIResolverPanel'
-import ZoteroPanel from '../../../lib/components/workspace/ZoteroPanel'
 import PlagiarismPanel from '../../../lib/components/workspace/PlagiarismPanel'
 import UpgradeModal from '../../../lib/components/workspace/UpgradeModal'
 import { useSubscription } from '@/lib/hooks/useSubscription'
@@ -79,7 +78,7 @@ export default function WorkspacePage() {
     ? (MANUSCRIPT_SECTIONS[project.study_type] ?? DEFAULT_SECTIONS)
     : DEFAULT_SECTIONS
 
-  const TOOL_SECTIONS = ['Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver']
+  const TOOL_SECTIONS = ['Authors', 'AI Assistant', 'Uploads', 'Clinical Trials', 'DOI Resolver', 'Citation Generator', 'Journal Selector', 'Submission Checklist', 'Rejection Tracker']
 
   const sections = ['Overview', ...manuscriptSections, ...TOOL_SECTIONS]
 
@@ -372,7 +371,7 @@ export default function WorkspacePage() {
     })
   }
 
-  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check'])
+  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'Citation Generator', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check'])
   const isEditorSection = !NON_EDITOR.has(selectedSection)
 
   return (
@@ -407,7 +406,7 @@ export default function WorkspacePage() {
 
             <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, padding: '28px 32px', minHeight: 500 }}>
               {selectedSection === 'Overview' && (
-                <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} />
+                <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} onNavigate={setSelectedSection} />
               )}
 
               {isEditorSection && (
@@ -430,7 +429,7 @@ export default function WorkspacePage() {
               )}
 
               {selectedSection === 'Citation Generator' && (
-                <CitationGenerator />
+                <CitationGenerator projectId={project.id} />
               )}
 
               {selectedSection === 'Submission Checklist' && (
@@ -480,9 +479,6 @@ export default function WorkspacePage() {
                 <DOIResolverPanel />
               )}
 
-              {selectedSection === 'Zotero' && (
-                <ZoteroPanel />
-              )}
 
               {selectedSection === 'Plagiarism Check' && (
                 isScholar ? (

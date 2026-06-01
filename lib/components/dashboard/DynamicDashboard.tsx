@@ -136,10 +136,56 @@ export default function DynamicDashboard({ projects }: { projects: any[] }) {
   if (!loaded) return null
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 16, marginBottom: 32, fontFamily: inter }}>
+    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 14, marginBottom: 32, fontFamily: inter, alignItems: 'start' }}>
 
-      {/* ── Row: Streak + Recent Activity ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
+      {/* ── LEFT: Manuscript Progress ── */}
+      {progress.length > 0 && (
+        <div style={{
+          padding: '20px 22px', borderRadius: 16,
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}>
+          <div style={{ fontSize: 11, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 16 }}>
+            ◎ &nbsp;Manuscript Progress
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            {progress.map(p => {
+              const pct = Math.round((p.written / p.total) * 100)
+              const color = pct >= 75 ? '#34d399' : pct >= 40 ? '#c9943a' : '#a78bfa'
+              return (
+                <Link key={p.id} href={`/workspace/${p.id}`} style={{ textDecoration: 'none' }}>
+                  <div style={{ transition: 'opacity 0.18s' }}
+                    onMouseEnter={e => (e.currentTarget.style.opacity = '0.75')}
+                    onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0', textTransform: 'capitalize' }}>
+                        <span style={{ color, marginRight: 7, fontSize: 11 }}>◎</span>{p.title}
+                      </span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                        <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>{p.written}/{p.total} sections</span>
+                        <span style={{ fontSize: 11, fontWeight: 700, color }}>{pct}%</span>
+                      </div>
+                    </div>
+                    <div style={{ height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%', borderRadius: 99,
+                        width: `${pct}%`,
+                        background: `linear-gradient(90deg, ${color}99, ${color})`,
+                        transition: 'width 0.8s cubic-bezier(0.4,0,0.2,1)',
+                        boxShadow: `0 0 8px ${color}55`,
+                      }} />
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── RIGHT: Streak + Last Activity ── */}
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         {/* Streak card */}
         <div style={{
@@ -196,54 +242,8 @@ export default function DynamicDashboard({ projects }: { projects: any[] }) {
             <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.2)', margin: 0 }}>No activity yet — open a project and start writing.</p>
           )}
         </div>
-      </div>
 
-      {/* ── Project progress bars ── */}
-      {progress.length > 0 && (
-        <div style={{
-          padding: '20px 22px', borderRadius: 16,
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
-        }}>
-          <div style={{ fontSize: 11, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 16 }}>
-            ◎ &nbsp;Manuscript Progress
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-            {progress.map(p => {
-              const pct = Math.round((p.written / p.total) * 100)
-              const color = pct >= 75 ? '#34d399' : pct >= 40 ? '#c9943a' : '#a78bfa'
-              return (
-                <Link key={p.id} href={`/workspace/${p.id}`} style={{ textDecoration: 'none' }}>
-                  <div style={{ transition: 'opacity 0.18s' }}
-                    onMouseEnter={e => (e.currentTarget.style.opacity = '0.75')}
-                    onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0', textTransform: 'capitalize' }}>
-                        <span style={{ color, marginRight: 7, fontSize: 11 }}>◎</span>{p.title}
-                      </span>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>{p.written}/{p.total} sections</span>
-                        <span style={{ fontSize: 11, fontWeight: 700, color }}>{pct}%</span>
-                      </div>
-                    </div>
-                    {/* Progress bar */}
-                    <div style={{ height: 5, borderRadius: 99, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                      <div style={{
-                        height: '100%', borderRadius: 99,
-                        width: `${pct}%`,
-                        background: `linear-gradient(90deg, ${color}99, ${color})`,
-                        transition: 'width 0.8s cubic-bezier(0.4,0,0.2,1)',
-                        boxShadow: `0 0 8px ${color}55`,
-                      }} />
-                    </div>
-                  </div>
-                </Link>
-              )
-            })}
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

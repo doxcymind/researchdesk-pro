@@ -38,7 +38,7 @@ const SECTION_ICONS: Record<string, string> = {
   'Plagiarism Check':     '⚑',
 }
 
-const TOOL_ITEMS = ['Authors','Uploads','Citation Generator','Zotero','Journal Selector','Submission Checklist','Rejection Tracker','AI Assistant','Clinical Trials','DOI Resolver']
+const TOOL_ITEMS = ['Authors','AI Assistant','Uploads','Clinical Trials','DOI Resolver','Citation Generator','Journal Selector','Submission Checklist','Rejection Tracker']
 
 export default function Sidebar({ sections, selectedSection, setSelectedSection, onExit, onDelete }: SidebarProps) {
   const [showConfirm, setShowConfirm] = useState(false)

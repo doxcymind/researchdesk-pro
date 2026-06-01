@@ -366,3 +366,15 @@ h3 {
   .dashboard-grid { grid-template-columns: 1fr !important; }
 }
 
+@keyframes spinSymbol {
+  0%   { transform: rotate(0deg) scale(1); }
+  25%  { transform: rotate(90deg) scale(1.3); }
+  50%  { transform: rotate(180deg) scale(1); }
+  75%  { transform: rotate(270deg) scale(1.3); }
+  100% { transform: rotate(360deg) scale(1); }
+}
+.spin-symbol {
+  display: inline-block;
+  animation: spinSymbol 8s ease-in-out infinite;
+}
+

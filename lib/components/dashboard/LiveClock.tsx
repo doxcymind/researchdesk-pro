@@ -2,9 +2,6 @@
 
 import { useEffect, useState } from 'react'
 
-const DAYS   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
-const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']
-
 export default function LiveClock() {
   const [now, setNow] = useState(new Date())
   const [tick, setTick] = useState(false)
@@ -17,54 +14,16 @@ export default function LiveClock() {
   const h24  = now.getHours()
   const h12  = h24 % 12 || 12
   const min  = String(now.getMinutes()).padStart(2, '0')
-  const sec  = String(now.getSeconds()).padStart(2, '0')
   const ampm = h24 >= 12 ? 'PM' : 'AM'
-  const day  = DAYS[now.getDay()]
-  const date = now.getDate()
-  const mon  = MONTHS[now.getMonth()]
-  const year = now.getFullYear()
 
   return (
-    <div style={{
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 3,
-      minHeight: 52,
-    }}>
-      {/* Time */}
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-        <span style={{
-          fontSize: 22,
-          fontWeight: 300,
-          color: 'rgba(240,232,208,0.6)',
-          fontFamily: "'Courier New', monospace",
-          letterSpacing: '-0.5px',
-          fontVariantNumeric: 'tabular-nums',
-        }}>
-          {String(h12).padStart(2, '0')}
-          <span style={{ color: tick ? 'rgba(201,148,58,0.7)' : 'rgba(201,148,58,0.2)', transition: 'color 0.15s', margin: '0 1px' }}>:</span>
-          {min}
-          <span style={{ color: tick ? 'rgba(201,148,58,0.7)' : 'rgba(201,148,58,0.2)', transition: 'color 0.15s', margin: '0 1px' }}>:</span>
-          <span style={{ color: 'rgba(240,232,208,0.35)', fontSize: '0.65em' }}>{sec}</span>
-        </span>
-        <span style={{
-          fontSize: 10, fontWeight: 500,
-          color: 'rgba(201,148,58,0.5)',
-          letterSpacing: '0.1em',
-          fontFamily: "var(--font-inter), sans-serif",
-        }}>{ampm}</span>
-      </div>
-
-      {/* Date */}
-      <p style={{
-        fontSize: 12,
-        color: 'rgba(240,232,208,0.25)',
-        margin: 0,
-        letterSpacing: '0.03em',
-        fontFamily: "var(--font-inter), sans-serif",
-      }}>
-        {day}, {date} {mon} {year}
-      </p>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 99, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
+      <span style={{ fontSize: 16, fontWeight: 800, color: '#c9943a', fontFamily: "'Courier New', monospace", fontVariantNumeric: 'tabular-nums', letterSpacing: '-0.5px' }}>
+        {String(h12).padStart(2, '0')}
+        <span style={{ color: tick ? '#c9943a' : 'rgba(201,148,58,0.2)', transition: 'color 0.15s' }}>:</span>
+        {min}
+      </span>
+      <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.35)', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600 }}>{ampm}</span>
     </div>
   )
 }

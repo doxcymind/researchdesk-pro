@@ -11,8 +11,8 @@ import DynamicDashboard from '@/lib/components/dashboard/DynamicDashboard'
 import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
 
 const NAV = [
-  { label: 'Overview',    icon: '◈', href: '/dashboard' },
-  { label: 'Projects',    icon: '⬡', href: '/projects' },
+  { label: 'Dashboard',   icon: '◈', href: '/dashboard' },
+  { label: 'All Projects', icon: '⬡', href: '/projects' },
   { label: 'New Project', icon: '+', href: '/new-project' },
   { label: 'Tools',       icon: '🔧', href: '/tools' },
   { label: 'Settings',    icon: '⚙', href: '/settings' },
@@ -94,7 +94,7 @@ export default function DashboardPage() {
 
   /* greeting by time */
   const hour = new Date().getHours()
-  const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
+  const greeting = hour < 12 ? 'Good Morning' : hour < 18 ? 'Good Afternoon' : 'Good Evening'
 
 
   return (
@@ -193,17 +193,15 @@ export default function DashboardPage() {
           }}>
             {/* animated shimmer line */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #c9943a, rgba(167,139,250,0.8), transparent)', animation: 'shimmerLine 4s ease-in-out infinite' }} />
-            {/* corner glow */}
-            <div style={{ position: 'absolute', top: -40, right: -40, width: 180, height: 180, borderRadius: '50%', background: 'radial-gradient(circle, rgba(201,148,58,0.12) 0%, transparent 70%)', pointerEvents: 'none' }} />
 
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
               <div>
-                <p style={{ fontSize: 10, color: 'rgba(201,148,58,0.5)', letterSpacing: '0.25em', textTransform: 'uppercase', margin: '0 0 10px', fontWeight: 700 }}>✦ &nbsp; Dashboard</p>
-                <h1 style={{ fontSize: 38, fontWeight: 600, color: '#f0e8d0', margin: '0 0 14px', fontFamily: "var(--font-cinzel),'Cormorant Garamond',Georgia,serif", lineHeight: 1.1 }}>
-                  {greeting}{displayName ? ',' : ''}<br/>
-                  <span style={{ color: '#c9943a' }}>{displayName}</span>
-                </h1>
-                <LiveClock />
+<div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span className="spin-symbol" style={{ fontSize: 20, color: 'rgba(201,148,58,0.5)' }}>◎</span>
+                  <h1 style={{ fontSize: 38, fontWeight: 600, color: '#f0e8d0', margin: 0, fontFamily: "var(--font-cinzel),'Cormorant Garamond',Georgia,serif", lineHeight: 1.1 }}>
+                    {greeting}{displayName ? ', ' : ''}<span style={{ color: '#c9943a' }}>{displayName}</span>
+                  </h1>
+                </div>
               </div>
               <Link href="/new-project" style={{
                 textDecoration: 'none', fontSize: 13, fontWeight: 700,
@@ -211,7 +209,8 @@ export default function DashboardPage() {
                 background: 'linear-gradient(135deg, #c9943a, #e8b84a)',
                 boxShadow: '0 4px 28px rgba(201,148,58,0.35)',
                 transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 8,
-                alignSelf: 'flex-start',
+                alignSelf: 'flex-start', outline: '2px solid transparent',
+                animation: 'shimmerOutline 2.5s ease-in-out infinite',
               }}
                 onMouseEnter={e => { (e.currentTarget as HTMLElement).style.transform='translateY(-2px) scale(1.02)'; (e.currentTarget as HTMLElement).style.boxShadow='0 8px 36px rgba(201,148,58,0.5)' }}
                 onMouseLeave={e => { (e.currentTarget as HTMLElement).style.transform=''; (e.currentTarget as HTMLElement).style.boxShadow='0 4px 28px rgba(201,148,58,0.35)' }}
@@ -221,13 +220,13 @@ export default function DashboardPage() {
             </div>
 
             {/* stat pills */}
-            <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
+            <div style={{ display: 'flex', gap: 10, marginTop: 22, flexWrap: 'wrap', alignItems: 'center' }}>
+              <LiveClock />
               {[
                 { label: 'Active Projects', value: cnt, color: '#c9943a' },
-                { label: 'Sections Written', value: cntSec, color: '#a78bfa' },
               ].map(s => (
                 <div key={s.label} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 16px', borderRadius: 99, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)' }}>
-                  <span style={{ fontSize: 16, fontWeight: 800, color: s.color, fontFamily: "var(--font-cinzel),serif" }}>{s.value}</span>
+                  <span style={{ fontSize: 16, fontWeight: 800, color: s.color, fontFamily: "var(--font-inter), sans-serif" }}>{s.value}</span>
                   <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.35)', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 600 }}>{s.label}</span>
                 </div>
               ))}
@@ -272,6 +271,14 @@ export default function DashboardPage() {
         @keyframes shimmerLine {
           0%   { background-position: -200% center; }
           100% { background-position: 200% center; }
+        }
+        @keyframes breatheOrb {
+          0%, 100% { transform: scale(1); opacity: 1; }
+          50%       { transform: scale(1.18); opacity: 0.6; }
+        }
+        @keyframes shimmerOutline {
+          0%, 100% { box-shadow: 0 4px 28px rgba(201,148,58,0.35), 0 0 0 2px rgba(232,184,74,0.6); }
+          50%       { box-shadow: 0 4px 28px rgba(201,148,58,0.35), 0 0 0 3px rgba(232,184,74,0.15); }
         }
         .skel {
           background: rgba(255,255,255,0.07);

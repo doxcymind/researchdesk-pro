@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface Props {
   projectId: number
@@ -134,7 +135,7 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
     debounceRef.current = setTimeout(async () => {
       setSearching(true); setSearchError('')
       try {
-        const res = await fetch(`/api/journals?q=${encodeURIComponent(query)}`)
+        const res = await apiFetch(`/api/journals?q=${encodeURIComponent(query)}`)
         const data = await res.json()
         if (data.error) { setSearchError(data.error); setSearchResults([]) }
         else setSearchResults(data.results || [])

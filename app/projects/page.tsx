@@ -24,7 +24,7 @@ const DEFAULT_META = { color: 'rgba(240,232,208,0.5)', bg: 'rgba(255,255,255,0.0
 
 const NAV = [
   { label: 'Overview',    icon: '◈', href: '/dashboard' },
-  { label: 'Projects',    icon: '⬡', href: '/projects' },
+  { label: 'All Projects', icon: '⬡', href: '/projects' },
   { label: 'New Project', icon: '+', href: '/new-project' },
   { label: 'Tools',       icon: '🔧', href: '/tools' },
   { label: 'Settings',    icon: '⚙', href: '/settings' },
@@ -166,7 +166,6 @@ export default function ProjectsPage() {
         {/* Header */}
         <div className="stats-row" style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32, animation: 'fadeInUp 0.4s both' }}>
           <div>
-            <p style={{ fontSize: 11, color: 'rgba(201,148,58,0.6)', marginBottom: 8, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 600 }}>✦ &nbsp; All Projects</p>
             <h1 style={{ fontSize: 34, fontWeight: 600, color: '#f0e8d0', letterSpacing: '0.01em', margin: 0, fontFamily: "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif", lineHeight: 1.1 }}>
               Research Workspaces
             </h1>
