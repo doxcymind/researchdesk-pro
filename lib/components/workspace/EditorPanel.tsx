@@ -304,21 +304,19 @@ export default function EditorPanel({
         {isAbstract && keywords.length > 0 && (
           <div style={{ marginTop: 16, padding: '16px 20px', borderRadius: 12, background: 'rgba(99,179,237,0.05)', border: '1px solid rgba(99,179,237,0.15)' }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span style={{ fontSize: 12, fontWeight: 700, color: 'rgba(99,179,237,0.8)', textTransform: 'uppercase', letterSpacing: '0.1em' }}>🏷 AI-Suggested Keywords</span>
-                <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', marginLeft: 8 }}>MeSH-aligned · click to copy</span>
+                <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>MeSH-aligned</span>
               </div>
-              <button onClick={copyAllKeywords}
-                style={{ fontSize: 11, padding: '4px 12px', borderRadius: 8, background: copiedKw === '__all__' ? 'rgba(52,211,153,0.1)' : 'rgba(99,179,237,0.08)', border: `1px solid ${copiedKw === '__all__' ? 'rgba(52,211,153,0.3)' : 'rgba(99,179,237,0.2)'}`, color: copiedKw === '__all__' ? '#34d399' : 'rgba(99,179,237,0.7)', cursor: 'pointer', fontFamily: 'inherit', fontWeight: 600 }}>
-                {copiedKw === '__all__' ? '✓ Copied all' : '⎘ Copy all'}
-              </button>
+              <span style={{ fontSize: 11, fontWeight: 600, color: '#34d399', background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.25)', padding: '3px 10px', borderRadius: 20 }}>
+                ✓ Saved to export
+              </span>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
               {keywords.map(kw => (
-                <button key={kw} onClick={() => copyKeyword(kw)}
-                  style={{ padding: '5px 14px', borderRadius: 20, fontSize: 12, fontFamily: 'inherit', cursor: 'pointer', background: copiedKw === kw ? 'rgba(52,211,153,0.12)' : 'rgba(99,179,237,0.08)', border: `1px solid ${copiedKw === kw ? 'rgba(52,211,153,0.3)' : 'rgba(99,179,237,0.2)'}`, color: copiedKw === kw ? '#34d399' : 'rgba(99,179,237,0.8)', transition: 'all 0.15s' }}>
-                  {copiedKw === kw ? '✓ ' : ''}{kw}
-                </button>
+                <span key={kw} style={{ padding: '5px 14px', borderRadius: 20, fontSize: 12, background: 'rgba(99,179,237,0.08)', border: '1px solid rgba(99,179,237,0.2)', color: 'rgba(99,179,237,0.8)' }}>
+                  {kw}
+                </span>
               ))}
             </div>
           </div>
