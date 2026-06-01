@@ -324,7 +324,7 @@ export default function PlagiarismPanel({ projectId: _projectId }: PlagiarismPan
                   <>
                     <p style={{ fontSize: 14, color: '#4ade80', margin: '0 0 6px', fontWeight: 600 }}>✓ Scan Submitted</p>
                     <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.6)', margin: '0 0 14px', lineHeight: 1.6 }}>{copyleaksMsg}</p>
-                    <a href="https://app.copyleaks.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#e8b84a', textDecoration: 'none', fontWeight: 500 }}>
+                    <a href="https://api.copyleaks.com/dashboard" target="_blank" rel="noopener noreferrer" style={{ fontSize: 13, color: '#e8b84a', textDecoration: 'none', fontWeight: 500 }}>
                       View results on Copyleaks Dashboard →
                     </a>
                   </>
