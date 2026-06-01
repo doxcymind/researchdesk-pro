@@ -461,7 +461,7 @@ export default function WorkspacePage() {
               )}
 
               {selectedSection === 'Uploads' && (
-                <UploadsPanel projectId={project.id} />
+                <UploadsPanel projectId={project.id} projectTitle={project.title} studyType={project.study_type} />
               )}
 
               {selectedSection === 'Citation Generator' && (

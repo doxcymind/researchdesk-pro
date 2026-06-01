@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface Upload {
   id: number
@@ -12,6 +13,8 @@ interface Upload {
 
 interface UploadsPanelProps {
   projectId: number
+  projectTitle?: string
+  studyType?: string
 }
 
 const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20 MB
@@ -22,16 +25,45 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
-export default function UploadsPanel({ projectId }: UploadsPanelProps) {
+export default function UploadsPanel({ projectId, projectTitle, studyType }: UploadsPanelProps) {
   const [uploading, setUploading] = useState(false)
   const [dragOver, setDragOver]   = useState(false)
   const [files, setFiles]         = useState<Upload[]>([])
   const [loading, setLoading]     = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [panelError, setPanelError] = useState<string | null>(null)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [sugLoading, setSugLoading]   = useState(false)
+  const [sugFailed, setSugFailed]     = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { fetchFiles() }, [])
+
+  useEffect(() => {
+    if (projectTitle) fetchSuggestions()
+  }, [projectTitle])
+
+  const fetchSuggestions = async () => {
+    if (!projectTitle) return
+    setSugLoading(true)
+    setSugFailed(false)
+    try {
+      const res  = await apiFetch('/api/uploads/suggest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: projectTitle, studyType }),
+      })
+      const data = await res.json()
+      if (Array.isArray(data.suggestions) && data.suggestions.length > 0) {
+        setSuggestions(data.suggestions)
+      } else {
+        setSugFailed(true)
+      }
+    } catch {
+      setSugFailed(true)
+    }
+    setSugLoading(false)
+  }
 
   const fetchFiles = async () => {
     setLoading(true)
@@ -144,6 +176,36 @@ export default function UploadsPanel({ projectId }: UploadsPanelProps) {
         <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.35)', margin: 0 }}>
           Upload research PDFs to reference while writing · Max {formatSize(MAX_FILE_SIZE)} per file
         </p>
+      </div>
+
+      {/* AI Upload Suggestions */}
+      <div style={{ padding: '16px 20px', borderRadius: 14, background: 'rgba(201,148,58,0.04)', border: '1px solid rgba(201,148,58,0.15)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: (sugLoading || suggestions.length > 0 || sugFailed) ? 12 : 0 }}>
+          <span style={{ fontSize: 13, fontWeight: 700, color: '#e8b84a' }}>✦ What to upload</span>
+          <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>AI-powered · based on your topic</span>
+          {sugLoading && <span style={{ fontSize: 11, color: 'rgba(201,148,58,0.4)', marginLeft: 'auto' }}>Thinking…</span>}
+        </div>
+        {sugLoading && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {[1,2,3].map(i => <div key={i} style={{ height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite' }} />)}
+          </div>
+        )}
+        {!sugLoading && suggestions.length > 0 && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {suggestions.map((s, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
+                <span style={{ fontSize: 14, marginTop: 1, flexShrink: 0 }}>📄</span>
+                <span style={{ fontSize: 13, color: 'rgba(240,232,208,0.7)', lineHeight: 1.6 }}>{s}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        {!sugLoading && sugFailed && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.25)', margin: 0 }}>Could not load suggestions.</p>
+            <button onClick={fetchSuggestions} style={{ fontSize: 11, color: '#e8b84a', background: 'none', border: '1px solid rgba(201,148,58,0.25)', borderRadius: 8, padding: '3px 10px', cursor: 'pointer', fontFamily: 'inherit' }}>↺ Retry</button>
+          </div>
+        )}
       </div>
 
       {/* Drop zone */}
