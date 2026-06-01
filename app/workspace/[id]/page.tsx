@@ -21,6 +21,7 @@ import AuthorsPanel from '../../../lib/components/workspace/AuthorsPanel'
 import ClinicalTrialsPanel from '../../../lib/components/workspace/ClinicalTrialsPanel'
 import DOIResolverPanel from '../../../lib/components/workspace/DOIResolverPanel'
 import ZoteroPanel from '../../../lib/components/workspace/ZoteroPanel'
+import PlagiarismPanel from '../../../lib/components/workspace/PlagiarismPanel'
 import UpgradeModal from '../../../lib/components/workspace/UpgradeModal'
 import { useSubscription } from '@/lib/hooks/useSubscription'
 
@@ -81,7 +82,7 @@ export default function WorkspacePage() {
     ? (MANUSCRIPT_SECTIONS[project.study_type] ?? DEFAULT_SECTIONS)
     : DEFAULT_SECTIONS
 
-  const TOOL_SECTIONS = ['Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver']
+  const TOOL_SECTIONS = ['Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Plagiarism Check', 'Clinical Trials', 'DOI Resolver']
 
   const sections = ['Overview', ...manuscriptSections, ...TOOL_SECTIONS]
 
@@ -384,7 +385,7 @@ export default function WorkspacePage() {
     })
   }
 
-  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver'])
+  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check'])
   const isEditorSection = !NON_EDITOR.has(selectedSection)
 
   return (
@@ -493,6 +494,21 @@ export default function WorkspacePage() {
 
               {selectedSection === 'Zotero' && (
                 <ZoteroPanel />
+              )}
+
+              {selectedSection === 'Plagiarism Check' && (
+                isScholar ? (
+                  <PlagiarismPanel projectId={project.id} />
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: 300, gap: 16, textAlign: 'center' }}>
+                    <div style={{ fontSize: 36 }}>⚑</div>
+                    <h3 style={{ fontSize: 20, color: '#f0e8d0', margin: 0 }}>Plagiarism Check</h3>
+                    <p style={{ fontSize: 14, color: 'rgba(240,232,208,0.4)', maxWidth: 340, margin: 0, lineHeight: 1.6 }}>Check your manuscript for originality with AI analysis and Copyleaks cross-referencing against global academic databases.</p>
+                    <button onClick={() => setUpgradeFeature('Plagiarism Check')} style={{ marginTop: 8, padding: '12px 28px', borderRadius: 12, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer' }}>
+                      Unlock with Scholar Plan
+                    </button>
+                  </div>
+                )
               )}
             </div>
           </>
