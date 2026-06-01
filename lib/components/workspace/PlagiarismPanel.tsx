@@ -270,7 +270,7 @@ export default function PlagiarismPanel({ projectId: _projectId }: PlagiarismPan
             color: activeTab === tab ? '#e8b84a' : 'rgba(240,232,208,0.5)',
             fontWeight: activeTab === tab ? 600 : 400,
           }}>
-            {tab === 'ai' ? '✦ AI Originality Analysis' : '🔎 Copyleaks Database Scan'}
+            {tab === 'ai' ? '✦ AI Analysis' : '🔎 Copyleaks Scan'}
           </button>
         ))}
       </div>
