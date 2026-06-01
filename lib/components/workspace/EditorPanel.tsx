@@ -26,6 +26,7 @@ interface EditorPanelProps {
   onReview: () => void
   onCloseReview: () => void
   onSave?: () => void
+  onKeywordsGenerated?: (keywords: string[]) => void
 }
 
 const WORD_LIMITS: Record<string, number> = {
@@ -99,7 +100,7 @@ function ScoreRing({ score }: { score: number }) {
 
 export default function EditorPanel({
   selectedSection, content, setContent, saving,
-  reviewing, reviewData, onReview, onCloseReview, onSave,
+  reviewing, reviewData, onReview, onCloseReview, onSave, onKeywordsGenerated,
 }: EditorPanelProps) {
   const count = wordCount(content)
   const limit = WORD_LIMITS[selectedSection] || 0
@@ -121,7 +122,10 @@ export default function EditorPanel({
       const { apiFetch } = await import('@/lib/api-fetch')
       const res = await apiFetch('/api/keywords', { method: 'POST', body: JSON.stringify({ abstract: content }) })
       const data = await res.json()
-      if (data.keywords) setKeywords(data.keywords)
+      if (data.keywords) {
+        setKeywords(data.keywords)
+        onKeywordsGenerated?.(data.keywords)
+      }
     } catch {}
     setKeywordsLoading(false)
   }

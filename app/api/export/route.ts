@@ -145,6 +145,17 @@ export async function POST(req: NextRequest) {
           children: [new TextRun({ text: '[Not yet written]', italics: true, color: '999999', size: 24 })],
         }))
       }
+
+      // After Abstract: insert Keywords block if available
+      if (section === 'Abstract' && contentMap['__keywords__']?.trim()) {
+        docChildren.push(new Paragraph({
+          spacing: { before: 160, after: 240 },
+          children: [
+            new TextRun({ text: 'Keywords: ', bold: true, size: 24 }),
+            new TextRun({ text: contentMap['__keywords__'].trim(), size: 24, italics: true }),
+          ],
+        }))
+      }
     }
 
     // Footer note

@@ -324,6 +324,28 @@ export default function WorkspacePage() {
     }
   }
 
+  const saveKeywords = async (keywords: string[]) => {
+    if (!project) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) return
+      const content = keywords.join('; ')
+      const { data: existing } = await supabase
+        .from('project_sections')
+        .select('id')
+        .eq('project_id', project.id)
+        .eq('section', '__keywords__')
+        .eq('user_id', user.id)
+        .single()
+      if (existing) {
+        await supabase.from('project_sections').update({ content }).eq('id', existing.id).eq('user_id', user.id)
+      } else {
+        await supabase.from('project_sections').insert({ project_id: project.id, user_id: user.id, section: '__keywords__', content })
+      }
+    } catch {}
+  }
+
   const exportManuscript = async () => {
     if (!project) return
     try {
@@ -434,6 +456,7 @@ export default function WorkspacePage() {
                   onReview={reviewSection}
                   onCloseReview={() => setReviewData(null)}
                   onSave={() => saveContent()}
+                  onKeywordsGenerated={saveKeywords}
                 />
               )}
 
