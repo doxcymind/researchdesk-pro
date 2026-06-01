@@ -1,15 +1,9 @@
 import { getAuthUser } from '@/lib/auth-helper'
 import { rateLimit } from '@/lib/rate-limit'
 import { isScholarServer } from '@/lib/check-subscription'
-import OpenAI from 'openai'
+import { geminiChat } from '@/lib/gemini'
 
 const MAX_TEXT_CHARS = 12000
-
-function getOpenAI() {
-  const key = process.env.OPENAI_API_KEY
-  if (!key) throw new Error('OPENAI_API_KEY is not configured')
-  return new OpenAI({ apiKey: key })
-}
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
@@ -34,10 +28,7 @@ export async function POST(req: Request) {
 
   const truncated = text.slice(0, MAX_TEXT_CHARS)
 
-  try {
-    const openai = getOpenAI()
-
-    const systemPrompt = `You are an expert academic plagiarism and originality analyst for medical research manuscripts.
+  const systemPrompt = `You are an expert academic plagiarism and originality analyst for medical research manuscripts.
 
 Analyze the provided text for:
 1. Originality and uniqueness of expression
@@ -64,17 +55,8 @@ Return ONLY valid JSON in this exact structure (no markdown, no extra text):
 
 Limit flagged_phrases to at most 8. Be precise and constructive.`
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o-mini',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: `Analyze this academic text for plagiarism/originality:\n\n${truncated}` },
-      ],
-      temperature: 0.2,
-      max_tokens: 1200,
-    })
-
-    const raw = completion.choices[0].message.content || ''
+  try {
+    const raw = await geminiChat(systemPrompt, `Analyze this academic text for plagiarism/originality:\n\n${truncated}`)
 
     let analysis: {
       originality_score: number
@@ -88,7 +70,6 @@ Limit flagged_phrases to at most 8. Be precise and constructive.`
     try {
       analysis = JSON.parse(raw)
     } catch {
-      // Try extracting JSON from the response
       const match = raw.match(/\{[\s\S]*\}/)
       if (!match) throw new Error('AI returned invalid response format')
       analysis = JSON.parse(match[0])
@@ -98,7 +79,7 @@ Limit flagged_phrases to at most 8. Be precise and constructive.`
     analysis.originality_score = Math.max(0, Math.min(100, Number(analysis.originality_score) || 70))
     analysis.risk_level = ['low', 'medium', 'high'].includes(analysis.risk_level) ? analysis.risk_level : 'medium'
     analysis.flagged_phrases = Array.isArray(analysis.flagged_phrases) ? analysis.flagged_phrases.slice(0, 8) : []
-    analysis.strengths = Array.isArray(analysis.strengths) ? analysis.strengths.slice(0, 5) : []
+    analysis.strengths      = Array.isArray(analysis.strengths)      ? analysis.strengths.slice(0, 5)      : []
     analysis.recommendations = Array.isArray(analysis.recommendations) ? analysis.recommendations.slice(0, 5) : []
 
     return Response.json({ analysis, truncated: text.length > MAX_TEXT_CHARS })
