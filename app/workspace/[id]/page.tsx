@@ -65,24 +65,24 @@ export default function WorkspacePage() {
   const contentRef2 = useRef<string>('')   // tracks latest content for beforeunload save
 
   const MANUSCRIPT_SECTIONS: Record<string, string[]> = {
-    'Case Report':       ['Abstract', 'Introduction', 'Case Presentation', 'Discussion', 'Conclusion', 'References'],
-    'Case Series':       ['Abstract', 'Introduction', 'Case Presentations', 'Discussion', 'Conclusion', 'References'],
-    'Original Study':    ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References'],
-    'Review Article':    ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References'],
-    'Systematic Review': ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References'],
-    'Meta-Analysis':     ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References'],
-    'Thesis':            ['Abstract', 'Introduction', 'Literature Review', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References'],
-    'Letter to Editor':  ['Abstract', 'Body', 'References'],
-    'Audit':             ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Recommendations', 'References'],
+    'Case Report':       ['Abstract', 'Introduction', 'Case Presentation', 'Discussion', 'Conclusion', 'References', 'Plagiarism Check'],
+    'Case Series':       ['Abstract', 'Introduction', 'Case Presentations', 'Discussion', 'Conclusion', 'References', 'Plagiarism Check'],
+    'Original Study':    ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References', 'Plagiarism Check'],
+    'Review Article':    ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References', 'Plagiarism Check'],
+    'Systematic Review': ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References', 'Plagiarism Check'],
+    'Meta-Analysis':     ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References', 'Plagiarism Check'],
+    'Thesis':            ['Abstract', 'Introduction', 'Literature Review', 'Methods', 'Results', 'Discussion', 'Conclusion', 'References', 'Plagiarism Check'],
+    'Letter to Editor':  ['Abstract', 'Body', 'References', 'Plagiarism Check'],
+    'Audit':             ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Recommendations', 'References', 'Plagiarism Check'],
   }
 
-  const DEFAULT_SECTIONS = ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'References']
+  const DEFAULT_SECTIONS = ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'References', 'Plagiarism Check']
 
   const manuscriptSections = project
     ? (MANUSCRIPT_SECTIONS[project.study_type] ?? DEFAULT_SECTIONS)
     : DEFAULT_SECTIONS
 
-  const TOOL_SECTIONS = ['Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Plagiarism Check', 'Clinical Trials', 'DOI Resolver']
+  const TOOL_SECTIONS = ['Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver']
 
   const sections = ['Overview', ...manuscriptSections, ...TOOL_SECTIONS]
 
