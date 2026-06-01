@@ -1,8 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
 
-const COPYLEAKS_EMAIL = process.env.COPYLEAKS_EMAIL
-const COPYLEAKS_KEY   = process.env.COPYLEAKS_KEY
-
 function getAdmin() {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -11,24 +8,22 @@ function getAdmin() {
   )
 }
 
-async function getCopyleaksToken(): Promise<string> {
-  const res = await fetch('https://id.copyleaks.com/v3/account/login/api', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email: COPYLEAKS_EMAIL, key: COPYLEAKS_KEY }),
-  })
-  if (!res.ok) throw new Error('Copyleaks login failed')
-  const data = await res.json()
-  return data.access_token as string
-}
-
 export async function POST(req: Request) {
   // scanId is embedded in the webhook URL as ?scanId=...
   const { searchParams } = new URL(req.url)
   const scanId = searchParams.get('scanId')
   if (!scanId) return new Response('ok', { status: 200 })
 
-  let body: { status?: number; error?: unknown }
+  let body: {
+    status?: number
+    results?: {
+      score?: { aggregatedScore?: number }
+      internet?: unknown[]
+      database?: unknown[]
+    }
+    error?: unknown
+  }
+
   try {
     body = await req.json()
   } catch {
@@ -36,60 +31,31 @@ export async function POST(req: Request) {
   }
 
   const supabase = getAdmin()
+  const status   = Number(body.status ?? 0)
 
-  // Copyleaks status codes:
-  // 1 = Submitted/queued, 2 = Processing → still running, ignore
-  // 410 = Completed successfully → fetch results
-  // 420, 500+ = Error states → mark failed
-  const status = Number(body.status ?? 0)
+  // Status 1 = queued, 2 = processing — still running, ignore
   if (status === 1 || status === 2) {
-    // Still in progress — do nothing, wait for next webhook
-    return new Response('ok', { status: 200 })
-  }
-  if (status !== 410) {
-    await supabase
-      .from('plagiarism_scans')
-      .update({ status: 'error', error_message: `Scan failed with status ${status}` })
-      .eq('scan_id', scanId)
     return new Response('ok', { status: 200 })
   }
 
-  // Fetch results from Copyleaks
-  try {
-    const token = await getCopyleaksToken()
-    const resultsRes = await fetch(
-      `https://api.copyleaks.com/v3/education/${encodeURIComponent(scanId)}/results`,
-      { headers: { Authorization: `Bearer ${token}` } }
-    )
-
-    if (!resultsRes.ok) {
-      await supabase
-        .from('plagiarism_scans')
-        .update({ status: 'error', error_message: 'Could not fetch scan results' })
-        .eq('scan_id', scanId)
-      return new Response('ok', { status: 200 })
-    }
-
-    const results = await resultsRes.json()
-
-    // Copyleaks score: aggregatedScore is 0-100 (% similar)
-    const similarityScore = results?.score?.aggregatedScore ?? null
+  // Status 410 = completed — results are in the webhook body
+  if (status === 410) {
+    const score   = body.results?.score?.aggregatedScore ?? null
+    const results = body.results ?? null
 
     await supabase
       .from('plagiarism_scans')
-      .update({
-        status: 'complete',
-        similarity_score: similarityScore,
-        results: results,
-      })
+      .update({ status: 'complete', similarity_score: score, results })
       .eq('scan_id', scanId)
-  } catch (err) {
-    console.error('Copyleaks webhook processing error:', err)
-    await supabase
-      .from('plagiarism_scans')
-      .update({ status: 'error', error_message: 'Failed to process scan results' })
-      .eq('scan_id', scanId)
+
+    return new Response('ok', { status: 200 })
   }
+
+  // Any other status = error
+  await supabase
+    .from('plagiarism_scans')
+    .update({ status: 'error', error_message: `Scan failed with Copyleaks status ${status}` })
+    .eq('scan_id', scanId)
 
   return new Response('ok', { status: 200 })
 }
