@@ -1,9 +1,6 @@
 import { getAuthUser } from '@/lib/auth-helper'
 import { isScholarServer } from '@/lib/check-subscription'
-// Import from lib path directly to avoid pdf-parse's test runner
-// which tries to load @napi-rs/canvas — unavailable in Vercel serverless
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse/lib/pdf-parse.js')
+import { extractText } from 'unpdf'
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 
@@ -39,19 +36,17 @@ export async function POST(req: Request) {
       text = buffer.toString('utf-8')
 
     } else if (name.endsWith('.pdf')) {
-      const data = await pdfParse(buffer)
-      text = data.text || ''
+      // unpdf is built for serverless — no native deps, works on Vercel
+      const { text: extracted } = await extractText(new Uint8Array(buffer), { mergePages: true })
+      text = extracted || ''
 
     } else if (name.endsWith('.docx') || name.endsWith('.doc')) {
-      // Use the docx package already in dependencies to extract raw text
-      // docx package is for creating, not reading — use mammoth-style manual extraction
-      // DOCX is a ZIP; extract word/document.xml and strip tags
+      // DOCX is a ZIP — extract word/document.xml and strip tags
       const JSZip = (await import('jszip')).default
       const zip = await JSZip.loadAsync(buffer)
       const xmlFile = zip.file('word/document.xml')
       if (!xmlFile) throw new Error('Invalid DOCX file')
       const xml = await xmlFile.async('string')
-      // Strip XML tags and decode entities
       text = xml
         .replace(/<w:p[ >][^>]*>/gi, '\n')
         .replace(/<[^>]+>/g, '')
