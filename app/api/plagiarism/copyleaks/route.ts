@@ -93,7 +93,7 @@ export async function POST(req: Request) {
     return Response.json({
       scanId,
       message: 'Scan submitted to Copyleaks. Results will be ready in 1–3 minutes.',
-      checkUrl: `https://api.copyleaks.com/dashboard`,
+      checkUrl: `https://api.copyleaks.com`,
     })
   } catch (error) {
     console.error('Copyleaks submission error:', error)
