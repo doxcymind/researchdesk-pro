@@ -1,9 +1,19 @@
 import { getAuthUser } from '@/lib/auth-helper'
 import { rateLimit } from '@/lib/rate-limit'
 import { isScholarServer } from '@/lib/check-subscription'
+import { createClient } from '@supabase/supabase-js'
 
 const COPYLEAKS_EMAIL = process.env.COPYLEAKS_EMAIL
 const COPYLEAKS_KEY   = process.env.COPYLEAKS_KEY
+const SITE_URL        = process.env.NEXT_PUBLIC_SITE_URL || 'https://researchdesk-pro.vercel.app'
+
+function getAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+}
 
 async function getCopyleaksToken(): Promise<string> {
   const res = await fetch('https://id.copyleaks.com/v3/account/login/api', {
@@ -27,7 +37,7 @@ export async function POST(req: Request) {
   if (!scholar) return Response.json({ error: 'Scholar plan required' }, { status: 403 })
 
   if (!COPYLEAKS_EMAIL || !COPYLEAKS_KEY) {
-    return Response.json({ error: 'Copyleaks is not configured on this server. Please add COPYLEAKS_EMAIL and COPYLEAKS_KEY to environment variables.' }, { status: 503 })
+    return Response.json({ error: 'Copyleaks is not configured. Please contact support.' }, { status: 503 })
   }
 
   const { allowed } = rateLimit(`${user.id}:copyleaks`, 5, 60000)
@@ -44,42 +54,29 @@ export async function POST(req: Request) {
   if (!text) return Response.json({ error: 'No text provided' }, { status: 400 })
   if (text.length < 50) return Response.json({ error: 'Text too short (minimum 50 characters)' }, { status: 400 })
 
-  // Limit to 25,000 chars (Copyleaks free tier limit per scan)
   const truncated = text.slice(0, 25000)
+  const scanId    = `rd-${user.id.slice(0, 8)}-${Date.now()}`
 
   try {
     const token = await getCopyleaksToken()
-
-    // Generate a unique scan ID
-    const scanId = `rd-${user.id.slice(0, 8)}-${Date.now()}`
-
-    // Base64-encode the text
     const base64Content = Buffer.from(truncated, 'utf-8').toString('base64')
 
-    // Submit for scanning (education endpoint — broad internet + academic DB)
     const submitRes = await fetch(
       `https://api.copyleaks.com/v3/education/submit/file/${encodeURIComponent(scanId)}`,
       {
         method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({
           base64: base64Content,
           filename: `manuscript_${scanId}.txt`,
           properties: {
             webhooks: {
-              // Use Copyleaks' no-op webhook URL since we poll instead
-              status: `${process.env.NEXT_PUBLIC_SITE_URL || 'https://researchdesk.vercel.app'}/api/plagiarism/copyleaks/webhook`,
+              status: `${SITE_URL}/api/plagiarism/copyleaks/webhook`,
             },
-            sensitiveDataProtection: {
-              anonymizeText: true,
-            },
-            scanning: {
-              internet: true,
-              copyleaksDatabaseAccess: true,
-            },
+            // Pass scanId back in developerPayload so webhook knows which record to update
+            developerPayload: scanId,
+            sensitiveDataProtection: { anonymizeText: true },
+            scanning: { internet: true, copyleaksDatabaseAccess: true },
           },
         }),
       }
@@ -90,11 +87,15 @@ export async function POST(req: Request) {
       throw new Error(`Copyleaks submission failed: ${err}`)
     }
 
-    return Response.json({
-      scanId,
-      message: 'Scan submitted to Copyleaks. Results will be ready in 1–3 minutes.',
-      checkUrl: `https://api.copyleaks.com`,
+    // Save pending record to DB
+    const supabase = getAdmin()
+    await supabase.from('plagiarism_scans').insert({
+      user_id:  user.id,
+      scan_id:  scanId,
+      status:   'pending',
     })
+
+    return Response.json({ scanId, message: 'Scan submitted. Results will appear here in 1–3 minutes.' })
   } catch (error) {
     console.error('Copyleaks submission error:', error)
     const msg = error instanceof Error ? error.message : 'Submission failed'
