@@ -3,129 +3,149 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-interface Props { projectId: number; studyType?: string; manuscriptSections?: string[] }
+interface Props { projectId: number; studyType?: string; manuscriptSections?: string[]; onNavigate?: (section: string) => void }
 interface ChecklistItem { id: string; item: string; completed: boolean }
+interface SectionDraft { section: string; content: string }
 
-/** Convert a sidebar section name → checklist item label */
 function sectionToCheckItem(s: string): string {
   if (s === 'References') return 'References added'
-  return `${s} completed`
+  if (s === 'Plagiarism Check') return 'Plagiarism check done'
+  return `${s} written`
 }
 
-/** Icon for any checklist item */
-function itemIcon(item: string): string {
-  const map: Record<string, string> = {
-    'Abstract completed': '✦', 'Introduction completed': '⬡',
-    'Methods completed': '⚙', 'Results completed': '◉',
-    'Discussion completed': '◎', 'Conclusion completed': '◈',
-    'References added': '⊞', 'Ethics approval attached': '⚖',
-    'Images ready for publication': '🖼', 'IEC approval obtained': '⚖',
-  }
-  return map[item] ?? '◦'
+const SECTION_ICONS: Record<string, string> = {
+  Abstract: '✦', Introduction: '⬡', 'Case Presentation': '📋',
+  Methods: '⚙', Results: '◉', Discussion: '◎', Conclusion: '◈',
+  References: '⊞', 'Plagiarism Check': '⚑',
+  'Case Presentations': '📋', 'Literature Review': '📖',
 }
 
-const DEFAULT_SECTIONS = ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'References']
+const WORD_TARGETS: Record<string, number> = {
+  Abstract: 250, Introduction: 500, 'Case Presentation': 600, 'Case Presentations': 800,
+  Methods: 600, Results: 500, Discussion: 700, Conclusion: 250,
+  References: 300, 'Literature Review': 1000,
+}
 
-export default function OverviewPanel({ projectId, studyType, manuscriptSections }: Props) {
-  const [documents, setDocuments]         = useState(0)
-  const [drafts, setDrafts]               = useState(0)
-  const [checksCompleted, setChecksCompleted] = useState(0)
-  const [totalChecks, setTotalChecks]     = useState(0)
-  const [activities, setActivities]       = useState<any[]>([])
-  const [checklist, setChecklist]         = useState<ChecklistItem[]>([])
+function wordCount(text: string) {
+  return text.trim() ? text.trim().split(/\s+/).length : 0
+}
+
+function statusFromWords(section: string, wc: number): 'empty' | 'started' | 'good' | 'done' {
+  const target = WORD_TARGETS[section] || 400
+  if (wc === 0) return 'empty'
+  if (wc < target * 0.25) return 'started'
+  if (wc < target * 0.8) return 'good'
+  return 'done'
+}
+
+const STATUS_COLOR: Record<string, string> = {
+  empty: 'rgba(240,232,208,0.15)', started: '#fbbf24', good: '#fb923c', done: '#34d399'
+}
+const STATUS_LABEL: Record<string, string> = {
+  empty: 'Not started', started: 'Started', good: 'In progress', done: 'Complete'
+}
+
+export default function OverviewPanel({ projectId, studyType, manuscriptSections, onNavigate }: Props) {
+  const [documents, setDocuments]   = useState(0)
+  const [activities, setActivities] = useState<any[]>([])
+  const [checklist, setChecklist]   = useState<ChecklistItem[]>([])
+  const [drafts, setDrafts]         = useState<SectionDraft[]>([])
   const [animatedProgress, setAnimatedProgress] = useState(0)
   const initRef = useRef<number | null>(null)
 
+  const editorSections = (manuscriptSections ?? []).filter(s => s !== 'Plagiarism Check')
+
   useEffect(() => {
-    // Reset when projectId changes so a new workspace initialises correctly
     if (initRef.current === projectId) return
     initRef.current = projectId
-    ;(async () => {
-      await initializeChecklist()
-      await fetchDashboardData()
-    })()
+    fetchAll()
   }, [projectId])
 
-  const initializeChecklist = async () => {
+  const fetchAll = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const user = session?.user
       if (!user) return
 
-      const { data: allRows } = await supabase
-        .from('publication_checks').select('id, item').eq('project_id', projectId).eq('user_id', user.id).order('id', { ascending: true })
-      if (allRows && allRows.length > 0) {
-        const seen = new Set<string>(); const toDelete: string[] = []
-        for (const row of allRows) { if (seen.has(row.item)) toDelete.push(row.id); else seen.add(row.item) }
-        if (toDelete.length) await supabase.from('publication_checks').delete().in('id', toDelete).eq('user_id', user.id)
-        return
-      }
-      // Derive checklist directly from the actual sidebar sections so they always match
-      const baseSections = manuscriptSections ?? DEFAULT_SECTIONS
-      const defaults: string[] = baseSections.map(sectionToCheckItem)
-      await supabase.from('publication_checks').insert(
-        defaults.map(item => ({ project_id: projectId, user_id: user.id, item, completed: false }))
-      )
-    } catch (error) {
-      console.error('initializeChecklist error:', error)
-    }
-  }
-
-  const fetchDashboardData = async () => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      const user = session?.user
-      if (!user) return
-
-      const [{ count: docsCount }, { count: draftsCount }, { data: checks }, { data: activityData }] = await Promise.all([
+      const [{ count: docsCount }, { data: checks }, { data: activityData }, { data: sectionData }] = await Promise.all([
         supabase.from('uploads').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('user_id', user.id),
-        supabase.from('project_sections').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('user_id', user.id),
         supabase.from('publication_checks').select('*').eq('project_id', projectId).eq('user_id', user.id),
-        supabase.from('activity_logs').select('*').eq('project_id', projectId).eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+        supabase.from('activity_logs').select('*').eq('project_id', projectId).eq('user_id', user.id).order('created_at', { ascending: false }).limit(8),
+        supabase.from('project_sections').select('section, content').eq('project_id', projectId).eq('user_id', user.id),
       ])
-      const seen = new Set<string>()
-      const unique = (checks || []).filter((c: ChecklistItem) => { if (seen.has(c.item)) return false; seen.add(c.item); return true })
-      setDocuments(docsCount || 0); setDrafts(draftsCount || 0)
-      setChecklist(unique)
-      const comp = unique.filter((c: ChecklistItem) => c.completed).length
-      setChecksCompleted(comp); setTotalChecks(unique.length)
+
+      setDocuments(docsCount || 0)
       setActivities(activityData || [])
-    } catch (error) {
-      console.error('fetchDashboardData error:', error)
+      setDrafts(sectionData || [])
+
+      const seen = new Set<string>()
+      const unique = (checks || []).filter((c: ChecklistItem) => {
+        if (seen.has(c.item)) return false; seen.add(c.item); return true
+      })
+
+      // If no checklist rows exist yet, create them and set state directly
+      if (unique.length === 0) {
+        const sections = (manuscriptSections ?? ['Abstract', 'Introduction', 'Discussion', 'Conclusion', 'References'])
+          .filter(s => s !== 'Plagiarism Check')
+        const items = sections.map(s => sectionToCheckItem(s))
+        const { data: inserted } = await supabase
+          .from('publication_checks')
+          .insert(items.map(item => ({ project_id: projectId, user_id: user.id, item, completed: false })))
+          .select()
+        setChecklist(inserted || items.map((item, i) => ({ id: String(i), item, completed: false })))
+      } else {
+        setChecklist(unique)
+      }
+    } catch (e) {
+      console.error('fetchAll error:', e)
+      // Fallback: show static checklist from sections even if DB fails
+      const sections = (manuscriptSections ?? ['Abstract', 'Introduction', 'Discussion', 'Conclusion', 'References'])
+        .filter(s => s !== 'Plagiarism Check')
+      setChecklist(sections.map((s, i) => ({ id: String(i), item: sectionToCheckItem(s), completed: false })))
     }
   }
 
   const toggleItem = async (id: string, current: boolean) => {
-    // Optimistically update local state — no N+1 re-fetch
-    const newCompleted = !current
-    setChecklist(prev => prev.map(c => c.id === id ? { ...c, completed: newCompleted } : c))
-    setChecksCompleted(prev => newCompleted ? prev + 1 : prev - 1)
-
+    const next = !current
+    setChecklist(prev => prev.map(c => c.id === id ? { ...c, completed: next } : c))
     try {
       const { data: { session } } = await supabase.auth.getSession()
       const user = session?.user
       if (!user) return
-      await supabase.from('publication_checks').update({ completed: newCompleted }).eq('id', id).eq('user_id', user.id)
-    } catch (error) {
-      // Roll back on error
-      console.error('toggleItem error:', error)
+      await supabase.from('publication_checks').update({ completed: next }).eq('id', id).eq('user_id', user.id)
+    } catch {
       setChecklist(prev => prev.map(c => c.id === id ? { ...c, completed: current } : c))
-      setChecksCompleted(prev => current ? prev + 1 : prev - 1)
     }
   }
 
-  const progress = totalChecks > 0 ? Math.round((checksCompleted / totalChecks) * 100) : 0
+  const checksCompleted = checklist.filter(c => c.completed).length
+  const totalChecks     = checklist.length
+  const progress        = totalChecks > 0 ? Math.round((checksCompleted / totalChecks) * 100) : 0
 
   useEffect(() => {
     const t = setTimeout(() => setAnimatedProgress(progress), 400)
     return () => clearTimeout(t)
   }, [progress])
 
-  const R = 68; const CIRC = 2 * Math.PI * R
-  const dash = (animatedProgress / 100) * CIRC
+  const draftMap: Record<string, string> = {}
+  for (const d of drafts) draftMap[d.section] = d.content
 
-  const scoreColor  = progress >= 75 ? '#34d399' : progress >= 40 ? '#e8c97a' : 'rgba(200,192,175,0.75)'
-  const scoreLabel  = progress >= 75 ? 'Publication Ready' : progress >= 40 ? 'In Progress' : 'Early Draft'
+  const totalWords = editorSections.reduce((sum, s) => sum + wordCount(draftMap[s] || ''), 0)
+
+  const sectionsWithStatus = editorSections.map(s => {
+    const wc     = wordCount(draftMap[s] || '')
+    const target = WORD_TARGETS[s] || 400
+    const status = statusFromWords(s, wc)
+    const pct    = Math.min(100, Math.round((wc / target) * 100))
+    return { section: s, wc, target, status, pct }
+  })
+
+  const nextSection = sectionsWithStatus.find(s => s.status === 'empty' || s.status === 'started')
+
+  const R = 60; const CIRC = 2 * Math.PI * R
+  const dash = (animatedProgress / 100) * CIRC
+  const scoreColor = progress >= 75 ? '#34d399' : progress >= 40 ? '#fbbf24' : 'rgba(201,148,58,0.7)'
+  const scoreLabel = progress >= 75 ? 'Publication Ready' : progress >= 40 ? 'In Progress' : 'Early Draft'
 
   const relTime = (iso: string) => {
     const diff = Date.now() - new Date(iso).getTime()
@@ -136,313 +156,207 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
   }
 
   return (
-    <div className="overview-root" style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
 
-      {/* ── ROYAL HERO CARD ────────────────────────────────── */}
-      <div style={{
-        position: 'relative', borderRadius: 24, overflow: 'hidden',
-        background: 'linear-gradient(135deg, #0d1426 0%, #080c18 50%, #0a0f1e 100%)',
-        border: '1px solid rgba(201,148,58,0.35)',
-        boxShadow: '0 0 60px rgba(201,148,58,0.07), inset 0 1px 0 rgba(201,148,58,0.15)',
-        padding: '36px 36px 32px',
-      }} className="overview-hero-card">
-        {/* corner ornaments */}
-        <svg style={{ position: 'absolute', top: 0, left: 0, pointerEvents: 'none' }} width={80} height={80} viewBox="0 0 80 80">
-          <path d="M0 0 L30 0 L0 30 Z" fill="rgba(201,148,58,0.06)" />
-          <path d="M2 2 L22 2 M2 2 L2 22" stroke="rgba(201,148,58,0.3)" strokeWidth="1" fill="none" />
-        </svg>
-        <svg style={{ position: 'absolute', top: 0, right: 0, pointerEvents: 'none' }} width={80} height={80} viewBox="0 0 80 80">
-          <path d="M80 0 L50 0 L80 30 Z" fill="rgba(201,148,58,0.06)" />
-          <path d="M78 2 L58 2 M78 2 L78 22" stroke="rgba(201,148,58,0.3)" strokeWidth="1" fill="none" />
-        </svg>
-        <svg style={{ position: 'absolute', bottom: 0, left: 0, pointerEvents: 'none' }} width={80} height={80} viewBox="0 0 80 80">
-          <path d="M0 80 L30 80 L0 50 Z" fill="rgba(201,148,58,0.06)" />
-          <path d="M2 78 L22 78 M2 78 L2 58" stroke="rgba(201,148,58,0.3)" strokeWidth="1" fill="none" />
-        </svg>
-        <svg style={{ position: 'absolute', bottom: 0, right: 0, pointerEvents: 'none' }} width={80} height={80} viewBox="0 0 80 80">
-          <path d="M80 80 L50 80 L80 50 Z" fill="rgba(201,148,58,0.06)" />
-          <path d="M78 78 L58 78 M78 78 L78 58" stroke="rgba(201,148,58,0.3)" strokeWidth="1" fill="none" />
-        </svg>
+      {/* ── TOP ROW: score + stats ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
 
-        {/* radial bg glow */}
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 500, height: 300, background: 'radial-gradient(ellipse, rgba(201,148,58,0.06) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
-        <div className="overview-hero-row" style={{ display: 'flex', alignItems: 'center', gap: 40, position: 'relative', zIndex: 1 }}>
-
-          {/* Ring */}
-          <div className="overview-ring" style={{ position: 'relative', flexShrink: 0 }}>
-            {/* outer glow ring */}
-            <div style={{
-              position: 'absolute', inset: -8, borderRadius: '50%',
-              background: `conic-gradient(${scoreColor}22 ${animatedProgress * 3.6}deg, transparent ${animatedProgress * 3.6}deg)`,
-              transition: 'background 1s ease', filter: 'blur(8px)',
-            }} />
-            <svg width={160} height={160} viewBox="0 0 160 160">
-              {/* tick marks */}
-              {Array.from({ length: 36 }).map((_, i) => {
-                const angle = (i * 10 - 90) * (Math.PI / 180)
-                const r1 = 76, r2 = i % 3 === 0 ? 70 : 73
-                return (
-                  <line key={i}
-                    x1={80 + r1 * Math.cos(angle)} y1={80 + r1 * Math.sin(angle)}
-                    x2={80 + r2 * Math.cos(angle)} y2={80 + r2 * Math.sin(angle)}
-                    stroke="rgba(201,148,58,0.2)" strokeWidth={i % 3 === 0 ? 1.5 : 0.8}
-                  />
-                )
-              })}
-              {/* base track */}
-              <circle cx={80} cy={80} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={12} />
-              {/* coloured arc */}
-              <circle cx={80} cy={80} r={R}
-                fill="none"
-                stroke={`url(#scoreGrad)`}
-                strokeWidth={12}
-                strokeLinecap="round"
-                strokeDasharray={`${dash} ${CIRC}`}
-                transform="rotate(-90 80 80)"
-                style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)' }}
-                filter="url(#glow)"
-              />
-              <defs>
-                <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stopColor={scoreColor} stopOpacity="0.7" />
-                  <stop offset="100%" stopColor={scoreColor} />
-                </linearGradient>
-                <filter id="glow">
-                  <feGaussianBlur stdDeviation="3" result="blur" />
-                  <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                </filter>
-              </defs>
-              {/* inner decorative ring */}
-              <circle cx={80} cy={80} r={52} fill="none" stroke="rgba(201,148,58,0.08)" strokeWidth={1} strokeDasharray="3 5" />
+        {/* Score ring */}
+        <div style={{ gridColumn: '1', background: 'linear-gradient(135deg,#0d1426,#080c18)', border: '1px solid rgba(201,148,58,0.3)', borderRadius: 20, padding: '24px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 10, position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 220, height: 220, background: `radial-gradient(ellipse, ${scoreColor}0d 0%, transparent 70%)`, pointerEvents: 'none' }} />
+          <p style={{ fontSize: 10, letterSpacing: '0.2em', color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', margin: 0 }}>Publication Readiness</p>
+          <div style={{ position: 'relative' }}>
+            <svg width={140} height={140} viewBox="0 0 140 140">
+              <circle cx={70} cy={70} r={R} fill="none" stroke="rgba(255,255,255,0.05)" strokeWidth={10} />
+              <circle cx={70} cy={70} r={R} fill="none" stroke={scoreColor} strokeWidth={10}
+                strokeLinecap="round" strokeDasharray={`${dash} ${CIRC}`}
+                transform="rotate(-90 70 70)"
+                style={{ transition: 'stroke-dasharray 1.2s cubic-bezier(0.4,0,0.2,1)', filter: `drop-shadow(0 0 6px ${scoreColor}88)` }} />
             </svg>
-            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2 }}>
-              <span style={{ fontSize: 9, letterSpacing: '0.18em', color: 'rgba(201,148,58,0.55)', textTransform: 'uppercase' }}>Score</span>
-              <span style={{ fontSize: 38, fontWeight: 900, color: scoreColor, lineHeight: 1, letterSpacing: '-1px', textShadow: `0 0 20px ${scoreColor}66` }}>{progress}</span>
-              <span style={{ fontSize: 9, letterSpacing: '0.12em', color: 'rgba(201,148,58,0.4)', textTransform: 'uppercase' }}>/ 100</span>
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+              <span style={{ fontSize: 32, fontWeight: 900, color: scoreColor, lineHeight: 1 }}>{progress}</span>
+              <span style={{ fontSize: 9, color: 'rgba(201,148,58,0.4)', letterSpacing: '0.1em' }}>/ 100</span>
             </div>
           </div>
-
-          {/* Text */}
-          <div style={{ flex: 1 }}>
-            <p style={{ fontSize: 11, letterSpacing: '0.22em', color: 'rgba(201,148,58,0.6)', textTransform: 'uppercase', margin: '0 0 10px', fontFamily: 'var(--font-inter), DM Sans, sans-serif' }}>Publication Readiness</p>
-            <h2 style={{ fontSize: 36, fontWeight: 600, color: '#f0e8d0', margin: '0 0 6px', letterSpacing: '0.01em', lineHeight: 1.1, fontFamily: 'var(--font-cinzel), Cormorant Garamond, Georgia, serif' }}>{scoreLabel}</h2>
-            <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.4)', margin: '0 0 22px' }}>
-              {checksCompleted} of {totalChecks} milestones complete
-            </p>
-
-            {/* mini stat row */}
-            <div style={{ display: 'flex', gap: 12 }}>
-              {[
-                { label: 'Uploads', val: documents, color: '#c9943a' },
-                { label: 'Drafts',  val: drafts,    color: '#a78bfa' },
-              ].map(s => (
-                <div key={s.label} style={{
-                  flex: 1, textAlign: 'center',
-                  background: 'rgba(255,255,255,0.03)',
-                  border: '1px solid rgba(255,255,255,0.07)',
-                  borderRadius: 12, padding: '12px 8px',
-                }}>
-                  <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: 0, lineHeight: 1 }}>{s.val}</p>
-                  <p style={{ fontSize: 10, color: 'rgba(240,232,208,0.35)', margin: '5px 0 0', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{s.label}</p>
-                </div>
-              ))}
-            </div>
+          <div style={{ textAlign: 'center' }}>
+            <p style={{ fontSize: 15, fontWeight: 700, color: '#f0e8d0', margin: '0 0 4px' }}>{scoreLabel}</p>
+            <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.35)', margin: 0 }}>{checksCompleted} of {totalChecks} milestones</p>
           </div>
         </div>
 
-        {/* progress stripe bar */}
-        <div style={{ marginTop: 28, position: 'relative', zIndex: 1 }}>
-          <div style={{ display: 'flex', gap: 3 }}>
-            {Array.from({ length: totalChecks || 7 }).map((_, i) => (
-              <div key={i} style={{
-                flex: 1, height: 5, borderRadius: 3,
-                background: i < checksCompleted
-                  ? `linear-gradient(90deg, ${scoreColor}cc, ${scoreColor})`
-                  : 'rgba(255,255,255,0.07)',
-                transition: 'background 0.5s',
-                boxShadow: i < checksCompleted ? `0 0 8px ${scoreColor}55` : 'none',
-              }} />
+        {/* Stats column */}
+        <div style={{ gridColumn: '2 / 4', display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* 2 stat cards */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2,1fr)', gap: 12 }}>
+            {[
+              { icon: '📄', label: 'Uploads', val: documents, color: '#c9943a' },
+              { icon: '✓', label: 'Sections Done', val: `${sectionsWithStatus.filter(s => s.status === 'done').length}/${editorSections.length}`, color: '#34d399' },
+            ].map(s => (
+              <div key={s.label} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, padding: '16px 14px', textAlign: 'center' }}>
+                <div style={{ fontSize: 20, marginBottom: 6 }}>{s.icon}</div>
+                <p style={{ fontSize: 22, fontWeight: 800, color: s.color, margin: '0 0 4px', lineHeight: 1 }}>{s.val}</p>
+                <p style={{ fontSize: 10, color: 'rgba(240,232,208,0.3)', margin: 0, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{s.label}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Next action card */}
+          {nextSection ? (
+            <div onClick={() => onNavigate?.(nextSection.section)}
+              style={{ background: 'rgba(201,148,58,0.05)', border: '1px solid rgba(201,148,58,0.2)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 14, cursor: onNavigate ? 'pointer' : 'default', transition: 'all 0.15s' }}
+              onMouseEnter={e => { if (onNavigate) { (e.currentTarget as HTMLElement).style.background = 'rgba(201,148,58,0.1)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(201,148,58,0.4)' } }}
+              onMouseLeave={e => { if (onNavigate) { (e.currentTarget as HTMLElement).style.background = 'rgba(201,148,58,0.05)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(201,148,58,0.2)' } }}>
+              <div style={{ width: 36, height: 36, borderRadius: 10, background: 'rgba(201,148,58,0.12)', border: '1px solid rgba(201,148,58,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, flexShrink: 0 }}>
+                {SECTION_ICONS[nextSection.section] || '✎'}
+              </div>
+              <div style={{ flex: 1 }}>
+                <p style={{ fontSize: 11, color: 'rgba(201,148,58,0.5)', margin: '0 0 3px', textTransform: 'uppercase', letterSpacing: '0.08em', fontWeight: 700 }}>Up next</p>
+                <p style={{ fontSize: 14, color: '#f0e8d0', margin: 0, fontWeight: 600 }}>Write your {nextSection.section}</p>
+                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.35)', margin: '2px 0 0' }}>
+                  {nextSection.wc > 0 ? `${nextSection.wc} words so far · target ${nextSection.target}` : `Target ~${nextSection.target} words`}
+                </p>
+              </div>
+              <div style={{ fontSize: 18, color: 'rgba(201,148,58,0.4)' }}>→</div>
+            </div>
+          ) : (
+            <div style={{ background: 'rgba(52,211,153,0.05)', border: '1px solid rgba(52,211,153,0.2)', borderRadius: 14, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 12 }}>
+              <span style={{ fontSize: 22 }}>🎉</span>
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#34d399', margin: '0 0 3px' }}>All sections written!</p>
+                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', margin: 0 }}>Run plagiarism check and export your manuscript.</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── SECTION PROGRESS ── */}
+      <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
+        <div style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>✎</div>
+            <div>
+              <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Section Progress</h3>
+              <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Word count per section · click to open</p>
+            </div>
+          </div>
+          <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.25)' }}>{totalWords.toLocaleString()} total words</span>
+        </div>
+        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {sectionsWithStatus.map(s => (
+            <div key={s.section} onClick={() => onNavigate?.(s.section)}
+              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.05)', cursor: onNavigate ? 'pointer' : 'default', transition: 'all 0.15s' }}
+              onMouseEnter={e => { if (onNavigate) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.035)' }}
+              onMouseLeave={e => { if (onNavigate) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.015)' }}>
+              <span style={{ fontSize: 13, width: 18, textAlign: 'center', flexShrink: 0 }}>{SECTION_ICONS[s.section] || '◦'}</span>
+              <span style={{ fontSize: 12, color: s.status === 'empty' ? 'rgba(240,232,208,0.3)' : 'rgba(240,232,208,0.75)', width: 140, flexShrink: 0, fontWeight: s.status !== 'empty' ? 500 : 400 }}>{s.section}</span>
+              <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${s.pct}%`, borderRadius: 3, background: STATUS_COLOR[s.status], transition: 'width 0.8s ease', boxShadow: s.status === 'done' ? '0 0 8px rgba(52,211,153,0.4)' : 'none' }} />
+              </div>
+              <span style={{ fontSize: 11, color: STATUS_COLOR[s.status], fontWeight: 600, width: 72, textAlign: 'right', flexShrink: 0 }}>
+                {s.status === 'empty' ? '—' : `${s.wc} / ${s.target}`}
+              </span>
+              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: `${STATUS_COLOR[s.status]}18`, color: STATUS_COLOR[s.status], border: `1px solid ${STATUS_COLOR[s.status]}33`, flexShrink: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                {STATUS_LABEL[s.status]}
+              </span>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── BOTTOM ROW: checklist + activity ── */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+
+        {/* Checklist */}
+        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(201,148,58,0.15)', borderRadius: 18, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(201,148,58,0.1)', background: 'linear-gradient(90deg,rgba(201,148,58,0.05),transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, color: '#c9943a' }}>✦</span>
+              <div>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Publication Checklist</h3>
+                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Tick off as you complete each section</p>
+              </div>
+            </div>
+            <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
+              background: checksCompleted === totalChecks && totalChecks > 0 ? 'rgba(52,211,153,0.12)' : 'rgba(201,148,58,0.08)',
+              border: `1px solid ${checksCompleted === totalChecks && totalChecks > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(201,148,58,0.2)'}`,
+              color: checksCompleted === totalChecks && totalChecks > 0 ? '#34d399' : '#c9943a' }}>
+              {checksCompleted === totalChecks && totalChecks > 0 ? '✓ All done' : `${checksCompleted} / ${totalChecks}`}
+            </span>
+          </div>
+          <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
+            {checklist.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', textAlign: 'center', padding: '16px 0', margin: 0 }}>Loading checklist…</p>
+            ) : checklist.map(item => (
+              <button key={item.id} onClick={() => toggleItem(item.id, item.completed)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: 'none', textAlign: 'left', fontFamily: 'inherit',
+                  background: item.completed ? 'rgba(52,211,153,0.06)' : 'rgba(255,255,255,0.02)',
+                  outline: 'none', transition: 'all 0.15s' }}>
+                <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  background: item.completed ? 'linear-gradient(135deg,#34d399,#059669)' : 'transparent',
+                  border: item.completed ? 'none' : '1.5px solid rgba(201,148,58,0.3)',
+                  boxShadow: item.completed ? '0 0 10px rgba(52,211,153,0.3)' : 'none', transition: 'all 0.15s' }}>
+                  {item.completed && <span style={{ fontSize: 10, color: '#fff', fontWeight: 900 }}>✓</span>}
+                </div>
+                <span style={{ fontSize: 12, color: item.completed ? 'rgba(240,232,208,0.3)' : 'rgba(240,232,208,0.7)', textDecoration: item.completed ? 'line-through' : 'none', flex: 1 }}>{item.item}</span>
+              </button>
+            ))}
+          </div>
+          {/* mini progress bar */}
+          {totalChecks > 0 && (
+            <div style={{ padding: '0 12px 12px', display: 'flex', gap: 3 }}>
+              {Array.from({ length: totalChecks }).map((_, i) => (
+                <div key={i} style={{ flex: 1, height: 3, borderRadius: 2,
+                  background: i < checksCompleted ? scoreColor : 'rgba(255,255,255,0.07)',
+                  transition: 'background 0.4s' }} />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Activity feed */}
+        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
+          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 14, color: 'rgba(240,232,208,0.4)' }}>◎</span>
+              <div>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Activity Log</h3>
+                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Workspace timeline</p>
+              </div>
+            </div>
+            {activities.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 5px #34d399' }} />
+                <span style={{ fontSize: 10, color: 'rgba(52,211,153,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live</span>
+              </div>
+            )}
+          </div>
+          <div style={{ padding: '8px 12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {activities.length === 0 ? (
+              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', textAlign: 'center', padding: '20px 0', margin: 0, fontStyle: 'italic' }}>No activity yet — start writing!</p>
+            ) : activities.map((a, i) => (
+              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderRadius: 9, background: i === 0 ? 'rgba(201,148,58,0.04)' : 'transparent' }}>
+                <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
+                  background: i === 0 ? 'rgba(201,148,58,0.12)' : 'rgba(255,255,255,0.03)',
+                  border: i === 0 ? '1px solid rgba(201,148,58,0.2)' : '1px solid rgba(255,255,255,0.05)',
+                  color: i === 0 ? '#c9943a' : 'rgba(240,232,208,0.3)' }}>
+                  {a.action.startsWith('Saved') ? '💾' : a.action.startsWith('AI') ? '✦' : a.action.startsWith('Upload') ? '↑' : a.action.startsWith('Export') ? '⬇' : '·'}
+                </div>
+                <span style={{ flex: 1, fontSize: 12, color: i === 0 ? 'rgba(240,232,208,0.8)' : 'rgba(240,232,208,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.action}</span>
+                <span style={{ fontSize: 10, color: 'rgba(240,232,208,0.2)', whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.03)', padding: '2px 8px', borderRadius: 20 }}>{relTime(a.created_at)}</span>
+              </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* ── CHECKLIST ───────────────────────────────────────── */}
-      <div style={{
-        borderRadius: 20,
-        background: 'rgba(255,255,255,0.015)',
-        border: '1px solid rgba(201,148,58,0.15)',
-        overflow: 'hidden',
-      }}>
-        {/* header */}
-        <div style={{
-          padding: '20px 24px 18px',
-          borderBottom: '1px solid rgba(201,148,58,0.1)',
-          background: 'linear-gradient(90deg, rgba(201,148,58,0.05) 0%, transparent 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: 'rgba(201,148,58,0.12)', border: '1px solid rgba(201,148,58,0.25)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, color: '#c9943a',
-            }}>✦</div>
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#f0e8d0', margin: 0, letterSpacing: '-0.2px' }}>Publication Checklist</h3>
-              <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Manuscript completion milestones</p>
-            </div>
-          </div>
-          <div style={{
-            fontSize: 11, fontWeight: 700, letterSpacing: '0.06em',
-            padding: '5px 14px', borderRadius: 20,
-            background: checksCompleted === totalChecks && totalChecks > 0 ? 'rgba(52,211,153,0.12)' : 'rgba(201,148,58,0.08)',
-            border: `1px solid ${checksCompleted === totalChecks && totalChecks > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(201,148,58,0.2)'}`,
-            color: checksCompleted === totalChecks && totalChecks > 0 ? '#34d399' : '#c9943a',
-          }}>
-            {checksCompleted === totalChecks && totalChecks > 0 ? '✓ Complete' : `${checksCompleted} / ${totalChecks}`}
-          </div>
-        </div>
-
-        {/* items */}
-        <div className="overview-checklist-grid" style={{ padding: '12px 14px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-          {checklist.map((item) => {
-            const icon = itemIcon(item.item)
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => toggleItem(item.id, item.completed)}
-                style={{
-                  display: 'flex', alignItems: 'center', gap: 12,
-                  padding: '13px 16px', borderRadius: 12, cursor: 'pointer',
-                  background: item.completed
-                    ? 'linear-gradient(90deg, rgba(52,211,153,0.08), rgba(52,211,153,0.03))'
-                    : 'rgba(255,255,255,0.02)',
-                  border: item.completed
-                    ? '1px solid rgba(52,211,153,0.22)'
-                    : '1px solid rgba(255,255,255,0.06)',
-                  transition: 'all 0.22s', textAlign: 'left',
-                  outline: 'none', fontFamily: 'inherit',
-                }}
-                onMouseEnter={e => { if (!item.completed) { (e.currentTarget as HTMLElement).style.background = 'rgba(201,148,58,0.06)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(201,148,58,0.2)' } }}
-                onMouseLeave={e => { if (!item.completed) { (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.02)'; (e.currentTarget as HTMLElement).style.borderColor = 'rgba(255,255,255,0.06)' } }}
-              >
-                {/* checkbox */}
-                <div style={{
-                  width: 22, height: 22, borderRadius: 6, flexShrink: 0,
-                  background: item.completed ? 'linear-gradient(135deg, #34d399 0%, #059669 100%)' : 'transparent',
-                  border: item.completed ? 'none' : '1.5px solid rgba(201,148,58,0.3)',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  boxShadow: item.completed ? '0 0 14px rgba(52,211,153,0.35)' : 'none',
-                  transition: 'all 0.22s',
-                }}>
-                  {item.completed && <span style={{ fontSize: 11, color: '#fff', fontWeight: 900 }}>✓</span>}
-                </div>
-
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span style={{ fontSize: 10, color: item.completed ? 'rgba(52,211,153,0.5)' : 'rgba(201,148,58,0.5)', flexShrink: 0 }}>{icon}</span>
-                    <span style={{
-                      fontSize: 12.5, fontWeight: 500,
-                      color: item.completed ? 'rgba(240,232,208,0.28)' : 'rgba(240,232,208,0.72)',
-                      textDecoration: item.completed ? 'line-through' : 'none',
-                      overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                      transition: 'color 0.22s',
-                    }}>{item.item}</span>
-                  </div>
-                </div>
-              </button>
-            )
-          })}
-        </div>
-      </div>
-
-      {/* ── ACTIVITY FEED ───────────────────────────────────── */}
-      <div style={{
-        borderRadius: 20,
-        background: 'rgba(255,255,255,0.015)',
-        border: '1px solid rgba(255,255,255,0.07)',
-        overflow: 'hidden',
-      }}>
-        {/* header */}
-        <div style={{
-          padding: '20px 24px 18px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          background: 'linear-gradient(90deg, rgba(255,255,255,0.02) 0%, transparent 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{
-              width: 28, height: 28, borderRadius: 8,
-              background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: 13, color: 'rgba(240,232,208,0.4)',
-            }}>◎</div>
-            <div>
-              <h3 style={{ fontSize: 14, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Activity Log</h3>
-              <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Workspace timeline</p>
-            </div>
-          </div>
-          {activities.length > 0 && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-              <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 5px #34d399' }} />
-              <span style={{ fontSize: 10, color: 'rgba(52,211,153,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live</span>
-            </div>
-          )}
-        </div>
-
-        <div style={{ padding: '10px 14px 12px' }}>
-          {activities.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: '28px 0' }}>
-              <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.2)', fontStyle: 'italic', margin: 0 }}>No activity yet — start writing to see your timeline</p>
-            </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {activities.map((a, i) => (
-                <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '9px 10px', borderRadius: 10, background: i === 0 ? 'rgba(201,148,58,0.04)' : 'transparent', marginBottom: 2 }}>
-                  {/* icon */}
-                  <div style={{
-                    width: 30, height: 30, borderRadius: 8, flexShrink: 0,
-                    background: i === 0 ? 'rgba(201,148,58,0.12)' : 'rgba(255,255,255,0.03)',
-                    border: i === 0 ? '1px solid rgba(201,148,58,0.22)' : '1px solid rgba(255,255,255,0.06)',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: 12, color: i === 0 ? '#c9943a' : 'rgba(240,232,208,0.3)',
-                  }}>
-                    {a.action.startsWith('Saved') ? '💾' : a.action.startsWith('Generated') ? '✦' : a.action.startsWith('AI') ? '◉' : a.action.startsWith('Upload') ? '↑' : '·'}
-                  </div>
-
-                  <span style={{
-                    flex: 1, fontSize: 13,
-                    color: i === 0 ? 'rgba(240,232,208,0.8)' : 'rgba(240,232,208,0.45)',
-                    overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-                  }}>{a.action}</span>
-
-                  <span style={{
-                    fontSize: 10.5, color: 'rgba(240,232,208,0.22)',
-                    whiteSpace: 'nowrap',
-                    background: 'rgba(255,255,255,0.04)',
-                    padding: '3px 9px', borderRadius: 20,
-                    border: '1px solid rgba(255,255,255,0.05)',
-                  }}>{relTime(a.created_at)}</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-    <style>{`
-      @media (max-width: 768px) {
-        .overview-root { gap: 28px !important; }
-        .overview-hero-card { padding: 24px 20px 22px !important; }
-        .overview-hero-row { flex-direction: column !important; align-items: center !important; gap: 20px !important; }
-        .overview-checklist-grid { grid-template-columns: 1fr !important; gap: 10px !important; padding: 16px !important; }
-        .overview-checklist-grid button { padding: 16px 18px !important; border-radius: 14px !important; font-size: 14px !important; }
-        .overview-checklist-grid button span:last-child { font-size: 14px !important; }
-      }
-    `}</style>
+      <style>{`
+        @media (max-width: 900px) {
+          .overview-top { grid-template-columns: 1fr !important; }
+          .overview-bottom { grid-template-columns: 1fr !important; }
+        }
+      `}</style>
     </div>
   )
 }
