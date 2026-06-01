@@ -1,7 +1,9 @@
 import { getAuthUser } from '@/lib/auth-helper'
 import { isScholarServer } from '@/lib/check-subscription'
+// Import from lib path directly to avoid pdf-parse's test runner
+// which tries to load @napi-rs/canvas — unavailable in Vercel serverless
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const pdfParse = require('pdf-parse')
+const pdfParse = require('pdf-parse/lib/pdf-parse.js')
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10 MB
 
