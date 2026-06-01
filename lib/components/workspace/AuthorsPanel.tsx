@@ -26,18 +26,24 @@ export default function AuthorsPanel({ projectId }: { projectId: number }) {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
-      const { data } = await supabase
-        .from('project_sections')
-        .select('content')
-        .eq('project_id', projectId)
-        .eq('user_id', user.id)
-        .eq('section', '__authors__')
-        .single()
-      if (data?.content) {
-        try { setAuthors(JSON.parse(data.content)) } catch {}
-      } else {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
+        if (!user) return
+        const { data } = await supabase
+          .from('project_sections')
+          .select('content')
+          .eq('project_id', projectId)
+          .eq('user_id', user.id)
+          .eq('section', '__authors__')
+          .single()
+        if (data?.content) {
+          try { setAuthors(JSON.parse(data.content)) } catch {}
+        } else {
+          setAuthors([emptyAuthor()])
+        }
+      } catch (e) {
+        console.error('AuthorsPanel load error:', e)
         setAuthors([emptyAuthor()])
       }
     }
@@ -46,7 +52,9 @@ export default function AuthorsPanel({ projectId }: { projectId: number }) {
 
   const save = async (list: Author[]) => {
     setSaving(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
 
     const { data: existing } = await supabase
@@ -62,9 +70,13 @@ export default function AuthorsPanel({ projectId }: { projectId: number }) {
         section: '__authors__', content: JSON.stringify(list),
       })
     }
-    setSaving(false)
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      console.error('AuthorsPanel save error:', e)
+    } finally {
+      setSaving(false)
+    }
   }
 
   const update = (id: string, field: keyof Author, value: string | boolean) => {

@@ -39,7 +39,7 @@ export async function GET(req: Request) {
 
     return Response.json({ results })
   } catch (error) {
-    console.log('Journal search error:', error)
+    console.error('Journal search error:', error)
     return Response.json({ error: 'Search failed' }, { status: 500 })
   }
 }

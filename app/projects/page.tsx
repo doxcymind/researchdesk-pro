@@ -1,5 +1,4 @@
 'use client'
-export const dynamic = 'force-dynamic'
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -24,9 +23,11 @@ const STUDY_META: Record<string, { color: string; bg: string; border: string; ic
 const DEFAULT_META = { color: 'rgba(240,232,208,0.5)', bg: 'rgba(255,255,255,0.07)', border: 'rgba(255,255,255,0.12)', icon: '📄' }
 
 const NAV = [
-  { label: 'Overview', icon: '◈', href: '/dashboard' },
-  { label: 'Projects', icon: '⬡', href: '/projects' },
+  { label: 'Overview',    icon: '◈', href: '/dashboard' },
+  { label: 'Projects',    icon: '⬡', href: '/projects' },
   { label: 'New Project', icon: '+', href: '/new-project' },
+  { label: 'Tools',       icon: '🔧', href: '/tools' },
+  { label: 'Settings',    icon: '⚙', href: '/settings' },
 ]
 
 export default function ProjectsPage() {
@@ -36,25 +37,31 @@ export default function ProjectsPage() {
   const [search, setSearch]     = useState('')
   const [filter, setFilter]     = useState('All')
   const [upgrading, setUpgrading] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
   const router = useRouter()
   const { isScholar, projectLimit } = useSubscription()
 
   const handleUpgrade = async () => {
     setUpgrading(true)
-    await openRazorpayCheckout()
+    setPaymentError(null)
+    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
     setUpgrading(false)
   }
 
-  useEffect(() => { fetchProjects() }, [])
+  useEffect(() => {
+    const t = setTimeout(() => setLoading(false), 5000)
+    fetchProjects().finally(() => clearTimeout(t))
+  }, [])
 
   const fetchProjects = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/'); return }
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) { router.push('/login'); return }
       setEmail(user.email || '')
       const { data, error } = await supabase.from('projects').select('*').eq('user_id', user.id).order('created_at', { ascending: false })
       if (!error && data) setProjects(data)
-    } catch (e) { console.log(e) } finally { setLoading(false) }
+    } catch (e) { console.error(e) } finally { setLoading(false) }
   }
 
   const signOut = async () => { await supabase.auth.signOut(); router.push('/') }
@@ -147,9 +154,12 @@ export default function ProjectsPage() {
                 Upgrade to Scholar for unlimited projects, AI review, and more.
               </p>
             </div>
-            <button onClick={handleUpgrade} disabled={upgrading} style={{ padding: '9px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-              {upgrading ? '…' : '✦ Upgrade to Scholar — ₹499/mo'}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
+              <button onClick={handleUpgrade} disabled={upgrading} style={{ padding: '9px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                {upgrading ? '…' : '✦ Upgrade to Scholar — ₹499/mo'}
+              </button>
+              {paymentError && <span style={{ fontSize: 11, color: '#f87171' }}>{paymentError}</span>}
+            </div>
           </div>
         )}
 
@@ -204,7 +214,7 @@ export default function ProjectsPage() {
             </div>
             {/* type filter pills */}
             <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              {studyTypes.slice(0, 4).map(t => {
+              {studyTypes.map(t => {
                 const active = filter === t
                 const meta = STUDY_META[t]
                 return (

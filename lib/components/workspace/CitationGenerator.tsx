@@ -73,7 +73,8 @@ export default function CitationGenerator() {
 
   useEffect(() => {
     const loadCreds = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) return
       const { data: profile } = await supabase
         .from('profiles')
@@ -180,8 +181,8 @@ export default function CitationGenerator() {
       if (data.citation) {
         setCitations(prev => [{ text: data.citation, style: selectedStyle, input: input.trim() }, ...prev])
         setInput('')
-      } else alert('Citation generation failed')
-    } catch { alert('Something went wrong') }
+      } else { console.error('Citation generation failed:', data.error) }
+    } catch (e) { console.error('CitationGenerator error:', e) }
     finally { setLoading(false) }
   }
 

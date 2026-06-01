@@ -19,6 +19,17 @@ export async function POST(req: Request) {
       notes: { supabase_user_id: user.id, plan: 'scholar' },
     })
 
+    // Store order_id → user_id mapping server-side so verify can check ownership
+    const supabase = (await import('@supabase/supabase-js')).createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    await supabase.from('razorpay_orders').upsert({
+      order_id: order.id,
+      user_id: user.id,
+      created_at: new Date().toISOString(),
+    })
+
     return Response.json({
       orderId: order.id,
       amount: order.amount,

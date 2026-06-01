@@ -36,7 +36,7 @@ function LoginContent() {
       t = setTimeout(() => setDisp(displayed.slice(0, -1)), 50)
     else { setDel(false); setWIdx((wIdx + 1) % TYPEWORDS.length) }
     return () => clearTimeout(t)
-  })
+  }, [mounted, wIdx, displayed, deleting])
 
   const loginWithGoogle = async () => {
     setLoading(true)

@@ -27,19 +27,19 @@ export default function LiveClock() {
   return (
     <div style={{
       display: 'flex',
-      alignItems: 'baseline',
-      justifyContent: 'space-between',
-      marginBottom: 36,
-      padding: '0 2px',
+      flexDirection: 'column',
+      gap: 3,
+      minHeight: 52,
     }}>
       {/* Time */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
         <span style={{
-          fontSize: 'clamp(28px, 4vw, 40px)',
+          fontSize: 22,
           fontWeight: 300,
-          color: 'rgba(240,232,208,0.75)',
+          color: 'rgba(240,232,208,0.6)',
           fontFamily: "'Courier New', monospace",
-          letterSpacing: '-1px',
+          letterSpacing: '-0.5px',
+          fontVariantNumeric: 'tabular-nums',
         }}>
           {String(h12).padStart(2, '0')}
           <span style={{ color: tick ? 'rgba(201,148,58,0.7)' : 'rgba(201,148,58,0.2)', transition: 'color 0.15s', margin: '0 1px' }}>:</span>
@@ -48,11 +48,10 @@ export default function LiveClock() {
           <span style={{ color: 'rgba(240,232,208,0.35)', fontSize: '0.65em' }}>{sec}</span>
         </span>
         <span style={{
-          fontSize: 11, fontWeight: 500,
+          fontSize: 10, fontWeight: 500,
           color: 'rgba(201,148,58,0.5)',
           letterSpacing: '0.1em',
           fontFamily: "var(--font-inter), sans-serif",
-          marginBottom: 2,
         }}>{ampm}</span>
       </div>
 
@@ -61,7 +60,7 @@ export default function LiveClock() {
         fontSize: 12,
         color: 'rgba(240,232,208,0.25)',
         margin: 0,
-        letterSpacing: '0.04em',
+        letterSpacing: '0.03em',
         fontFamily: "var(--font-inter), sans-serif",
       }}>
         {day}, {date} {mon} {year}

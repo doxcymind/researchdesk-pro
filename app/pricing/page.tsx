@@ -78,9 +78,12 @@ const FAQS = [
 export default function PricingPage() {
   const [upgrading, setUpgrading] = useState(false)
 
+  const [paymentError, setPaymentError] = useState<string | null>(null)
+
   const handleUpgrade = async () => {
     setUpgrading(true)
-    await openRazorpayCheckout()
+    setPaymentError(null)
+    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
     setUpgrading(false)
   }
 

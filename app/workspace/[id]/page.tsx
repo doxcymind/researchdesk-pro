@@ -6,6 +6,7 @@ import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/api-fetch'
 
 import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
+import { bumpStreak } from '@/lib/components/dashboard/DynamicDashboard'
 import Sidebar from '../../../lib/components/workspace/Sidebar'
 import WorkspaceHeader from '../../../lib/components/workspace/WorkspaceHeader'
 import OverviewPanel from '../../../lib/components/workspace/OverviewPanel'
@@ -19,6 +20,7 @@ import SubmissionChecklist from '../../../lib/components/workspace/SubmissionChe
 import AuthorsPanel from '../../../lib/components/workspace/AuthorsPanel'
 import ClinicalTrialsPanel from '../../../lib/components/workspace/ClinicalTrialsPanel'
 import DOIResolverPanel from '../../../lib/components/workspace/DOIResolverPanel'
+import ZoteroPanel from '../../../lib/components/workspace/ZoteroPanel'
 import UpgradeModal from '../../../lib/components/workspace/UpgradeModal'
 import { useSubscription } from '@/lib/hooks/useSubscription'
 
@@ -54,6 +56,7 @@ export default function WorkspacePage() {
   const [loading, setLoading] = useState(true)
   const [showScrollTop, setShowScrollTop] = useState(false)
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null)
+  const [shareUrl, setShareUrl] = useState<string | null>(null)
   const { isScholar } = useSubscription()
   const contentRef = useRef<HTMLElement>(null)
 
@@ -78,7 +81,7 @@ export default function WorkspacePage() {
     ? (MANUSCRIPT_SECTIONS[project.study_type] ?? DEFAULT_SECTIONS)
     : DEFAULT_SECTIONS
 
-  const TOOL_SECTIONS = ['Authors', 'Uploads', 'Citation Generator', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver']
+  const TOOL_SECTIONS = ['Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver']
 
   const sections = ['Overview', ...manuscriptSections, ...TOOL_SECTIONS]
 
@@ -86,14 +89,31 @@ export default function WorkspacePage() {
     fetchProject()
   }, [])
 
-  // Save immediately on browser close / tab close so no work is lost
+  // On browser close: stash content to localStorage as emergency backup
+  // (async Supabase save cannot complete in beforeunload — browsers block it)
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (contentRef2.current) saveContent(contentRef2.current)
+      if (contentRef2.current && project) {
+        const key = `rd_draft_${project.id}_${selectedSection}`
+        try { localStorage.setItem(key, contentRef2.current) } catch {}
+      }
     }
     window.addEventListener('beforeunload', handleBeforeUnload)
     return () => window.removeEventListener('beforeunload', handleBeforeUnload)
-  }, [])
+  }, [project, selectedSection])
+
+  // On next load of the same section, restore draft if newer than saved content
+  useEffect(() => {
+    if (!project) return
+    const key = `rd_draft_${project.id}_${selectedSection}`
+    const draft = localStorage.getItem(key)
+    if (draft && draft !== content) {
+      setContent(draft)
+      localStorage.removeItem(key)
+      // Persist the recovered draft immediately
+      saveContent(draft)
+    }
+  }, [project?.id, selectedSection])
 
   useEffect(() => {
     if (project) {
@@ -106,9 +126,8 @@ export default function WorkspacePage() {
 
   const fetchProject = async () => {
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
 
       if (!user) {
         router.push('/login')
@@ -123,15 +142,14 @@ export default function WorkspacePage() {
         .single()
 
       if (error || !data) {
-        console.log(error)
-        alert('Project not found')
+        console.error('Project not found:', error)
         router.push('/projects')
         return
       }
 
       setProject(data)
     } catch (error) {
-      console.log(error)
+      console.error(error)
       router.push('/projects')
     } finally {
       setLoading(false)
@@ -140,25 +158,27 @@ export default function WorkspacePage() {
 
   const fetchSectionContent = async () => {
     if (!project) return
+    try {
+      const { data: { session: _s1 } } = await supabase.auth.getSession()
+      const user = _s1?.user
+      if (!user) return
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+      const { data, error } = await supabase
+        .from('project_sections')
+        .select('*')
+        .eq('project_id', project.id)
+        .eq('section', selectedSection)
+        .eq('user_id', user.id)
+        .single()
 
-    if (!user) return
-
-    const { data, error } = await supabase
-      .from('project_sections')
-      .select('*')
-      .eq('project_id', project.id)
-      .eq('section', selectedSection)
-      .eq('user_id', user.id)
-      .single()
-
-    if (error || !data) {
+      if (error || !data) {
+        setContent('')
+      } else {
+        setContent(data.content)
+      }
+    } catch (error) {
+      console.error('fetchSectionContent error:', error)
       setContent('')
-    } else {
-      setContent(data.content)
     }
   }
 
@@ -170,9 +190,8 @@ export default function WorkspacePage() {
     setSaving(true)
 
     try {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
+      const { data: { session: _s2 } } = await supabase.auth.getSession()
+      const user = _s2?.user
 
       if (!user) return
 
@@ -204,8 +223,9 @@ export default function WorkspacePage() {
       }
 
       await logActivity(`Saved ${selectedSection}`)
+      bumpStreak()
     } catch (error) {
-      console.log(error)
+      console.error(error)
     } finally {
       setSaving(false)
     }
@@ -226,24 +246,28 @@ export default function WorkspacePage() {
 
   const deleteProject = async () => {
     if (!project) return
-    const { data: { session } } = await supabase.auth.getSession()
-    if (!session) { alert('Not signed in'); return }
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) { router.push('/login'); return }
 
-    const res = await fetch('/api/delete-project', {
-      method: 'DELETE',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`,
-      },
-      body: JSON.stringify({ projectId: project.id }),
-    })
+      const res = await fetch('/api/delete-project', {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ projectId: project.id }),
+      })
 
-    const data = await res.json()
-    if (!res.ok) {
-      alert(`Failed to delete: ${data.error}`)
-      return
+      const data = await res.json()
+      if (!res.ok) {
+        console.error('Failed to delete project:', data.error)
+        return
+      }
+      router.push('/projects')
+    } catch (error) {
+      console.error('deleteProject error:', error)
     }
-    router.push('/projects')
   }
 
   const generateDraft = async () => {
@@ -267,15 +291,12 @@ export default function WorkspacePage() {
       if (data.text) {
         setContent(data.text)
         await saveContent(data.text)
-        await logActivity(
-          `Generated draft for ${selectedSection}`
-        )
+        await logActivity(`Generated draft for ${selectedSection}`)
       } else {
-        alert('Generation failed')
+        console.error('Generation failed:', data.error)
       }
     } catch (error) {
-      console.log(error)
-      alert('Something went wrong')
+      console.error('generateDraft error:', error)
     } finally {
       setGenerating(false)
     }
@@ -292,12 +313,11 @@ export default function WorkspacePage() {
         body: JSON.stringify({ section: selectedSection, topic: project.title, content }),
       })
       const data = await response.json()
-      if (data.error) { alert(data.error); return }
+      if (data.error) { console.error('Review error:', data.error); return }
       setReviewData(data)
       await logActivity(`AI reviewed ${selectedSection}`)
     } catch (error) {
-      console.log(error)
-      alert('Review failed')
+      console.error('reviewSection error:', error)
     } finally {
       setReviewing(false)
     }
@@ -305,48 +325,55 @@ export default function WorkspacePage() {
 
   const exportManuscript = async () => {
     if (!project) return
-    const res = await apiFetch('/api/export', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        projectId: project.id,
-        projectTitle: project.title,
-        studyType: project.study_type,
-        sections: manuscriptSections,
-      }),
-    })
-    if (!res.ok) return
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${project.title.replace(/\s+/g, '_')}_manuscript.docx`
-    a.click()
-    URL.revokeObjectURL(url)
-    await logActivity('Exported manuscript')
+    try {
+      const res = await apiFetch('/api/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: project.id,
+          projectTitle: project.title,
+          studyType: project.study_type,
+          sections: manuscriptSections,
+        }),
+      })
+      if (!res.ok) { console.error('Export failed:', res.status); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${project.title.replace(/\s+/g, '_')}_manuscript.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+      await logActivity('Exported manuscript')
+    } catch (error) {
+      console.error('exportManuscript error:', error)
+    }
   }
 
   const shareManuscript = async () => {
     if (!project) return
-    const res = await apiFetch('/api/share', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ projectId: project.id }),
-    })
-    const data = await res.json()
-    if (data.url) {
-      const fullUrl = `${window.location.origin}${data.url}`
-      await navigator.clipboard.writeText(fullUrl)
-      alert(`Share link copied!\n\n${fullUrl}`)
+    try {
+      const res = await apiFetch('/api/share', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: project.id }),
+      })
+      const data = await res.json()
+      if (data.url) {
+        const fullUrl = `${window.location.origin}${data.url}`
+        try { await navigator.clipboard.writeText(fullUrl) } catch {}
+        setShareUrl(fullUrl)
+      }
+    } catch (error) {
+      console.error('shareManuscript error:', error)
     }
   }
 
   const logActivity = async (action: string) => {
     if (!project) return
 
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
+    const { data: { session: _s3 } } = await supabase.auth.getSession()
+    const user = _s3?.user
 
     if (!user) return
 
@@ -357,7 +384,7 @@ export default function WorkspacePage() {
     })
   }
 
-  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'Citation Generator', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver'])
+  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'Citation Generator', 'Zotero', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver'])
   const isEditorSection = !NON_EDITOR.has(selectedSection)
 
   return (
@@ -463,12 +490,32 @@ export default function WorkspacePage() {
               {selectedSection === 'DOI Resolver' && (
                 <DOIResolverPanel />
               )}
+
+              {selectedSection === 'Zotero' && (
+                <ZoteroPanel />
+              )}
             </div>
           </>
         )}
         {/* Upgrade modal */}
         {upgradeFeature && (
           <UpgradeModal feature={upgradeFeature} onClose={() => setUpgradeFeature(null)} />
+        )}
+
+        {/* Share URL toast */}
+        {shareUrl && (
+          <div style={{
+            position: 'fixed', bottom: 80, left: '50%', transform: 'translateX(-50%)', zIndex: 60,
+            background: 'rgba(12,16,32,0.95)', border: '1px solid rgba(201,148,58,0.35)',
+            borderRadius: 12, padding: '14px 20px', color: '#f0e8d0', fontSize: 13,
+            boxShadow: '0 8px 40px rgba(0,0,0,0.6)', maxWidth: 500, width: '90vw',
+            display: 'flex', alignItems: 'center', gap: 12,
+          }}>
+            <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', color: '#c9943a' }}>
+              ✓ Link copied: {shareUrl}
+            </span>
+            <button onClick={() => setShareUrl(null)} style={{ background: 'none', border: 'none', color: 'rgba(240,232,208,0.4)', cursor: 'pointer', fontSize: 16, padding: 0 }}>✕</button>
+          </div>
         )}
 
         {/* Scroll-to-top */}

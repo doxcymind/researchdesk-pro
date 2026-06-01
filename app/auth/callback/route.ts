@@ -5,7 +5,9 @@ import { createServerClient } from '@supabase/ssr'
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/projects'
+  const rawNext = searchParams.get('next') ?? '/dashboard'
+  // Prevent open redirect — only allow relative paths
+  const next = rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/dashboard'
 
   if (!code) {
     return NextResponse.redirect(new URL('/login', origin))

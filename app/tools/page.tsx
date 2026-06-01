@@ -1,7 +1,8 @@
 'use client'
-export const dynamic = 'force-dynamic'
+
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
@@ -65,6 +66,7 @@ const COMING_SOON = [
 ]
 
 export default function ToolsPage() {
+  const router = useRouter()
   const [userId, setUserId]       = useState('')
   const [apiKey, setApiKey]       = useState('')
   const [savedUserId, setSavedUserId] = useState('')
@@ -77,8 +79,9 @@ export default function ToolsPage() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { window.location.href = '/login'; return }
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) { router.push('/login'); return }
       setUser(user)
       const { data: profile } = await supabase
         .from('profiles')

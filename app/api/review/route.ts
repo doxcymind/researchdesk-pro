@@ -1,10 +1,14 @@
 import { getAuthUser } from '@/lib/auth-helper'
 import { rateLimit } from '@/lib/rate-limit'
 import { geminiChat } from '@/lib/gemini'
+import { isScholarServer } from '@/lib/check-subscription'
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const scholar = await isScholarServer(user.id, user.email)
+  if (!scholar) return Response.json({ error: 'Scholar plan required' }, { status: 403 })
 
   const { allowed } = rateLimit(`${user.id}:review`, 10, 60000)
   if (!allowed) return Response.json({ error: 'Rate limit exceeded. Please slow down.' }, { status: 429 })
@@ -12,14 +16,19 @@ export async function POST(req: Request) {
   try {
     const { section, topic, content } = await req.json()
 
-    if (!content || content.trim().length < 20) {
+    if (!section || !topic || !content) return Response.json({ error: 'section, topic, and content are required' }, { status: 400 })
+    if (content.trim().length < 20) {
       return Response.json({ error: 'Write a bit more before requesting mentor feedback.' }, { status: 400 })
     }
+    // Truncate to prevent prompt inflation
+    const safeSection  = String(section).slice(0, 100)
+    const safeTopic    = String(topic).slice(0, 500)
+    const safeContent  = String(content).slice(0, 8000)
 
     const raw = await geminiChat(
       `You are an expert academic mentor and senior medical journal editor. Your role is NOT to write for the researcher — it is to TEACH them to write better. You give honest, specific, educational feedback that helps the researcher understand what to improve and why. You ask guiding questions to make them think. You explain the standards journals expect. Always respond with valid JSON only.`,
 
-      `You are mentoring a researcher writing the "${section}" section of their medical manuscript titled "${topic}".
+      `You are mentoring a researcher writing the "${safeSection}" section of their medical manuscript titled "${safeTopic}".
 
 Read what they have written and give mentor-style feedback. Your feedback should:
 - Teach them WHY something is wrong, not just that it is wrong
@@ -62,7 +71,7 @@ Rules:
 
 Their text:
 """
-${content}
+${safeContent}
 """`
     )
 

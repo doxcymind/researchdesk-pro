@@ -5,7 +5,8 @@ import { supabase } from '@/lib/supabase'
 
 export type Plan = 'free' | 'scholar' | 'past_due'
 
-const WHITELISTED_EMAILS = [
+// Team / admin accounts — always get full Scholar access
+const TEAM_EMAILS = [
   'nechmed0080@gmail.com',
   'gaur.gsvm@gmail.com',
   'pheonixfire968@gmail.com',
@@ -17,24 +18,29 @@ export function useSubscription() {
 
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { setLoading(false); return }
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const user = session?.user
+        if (!user) return
 
-      // Whitelisted emails always get Scholar access
-      if (user.email && WHITELISTED_EMAILS.includes(user.email.toLowerCase())) {
-        setPlan('scholar')
+        // Team accounts always have Scholar access — no DB lookup needed
+        if (user.email && TEAM_EMAILS.includes(user.email.toLowerCase())) {
+          setPlan('scholar')
+          return
+        }
+
+        const { data } = await supabase
+          .from('profiles')
+          .select('subscription_status')
+          .eq('id', user.id)
+          .single()
+
+        setPlan((data?.subscription_status as Plan) || 'free')
+      } catch {
+        // fail silently — default to free plan
+      } finally {
         setLoading(false)
-        return
       }
-
-      const { data } = await supabase
-        .from('profiles')
-        .select('subscription_status')
-        .eq('id', user.id)
-        .single()
-
-      setPlan((data?.subscription_status as Plan) || 'free')
-      setLoading(false)
     }
     load()
   }, [])

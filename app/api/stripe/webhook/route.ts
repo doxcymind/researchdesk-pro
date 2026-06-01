@@ -4,6 +4,9 @@ import { createClient } from '@supabase/supabase-js'
 export const dynamic = 'force-dynamic'
 
 export async function POST(req: Request) {
+  if (!process.env.STRIPE_SECRET_KEY || !process.env.STRIPE_WEBHOOK_SECRET) {
+    return new Response('Stripe not configured', { status: 501 })
+  }
   const body = await req.text()
   const sig = req.headers.get('stripe-signature')!
 

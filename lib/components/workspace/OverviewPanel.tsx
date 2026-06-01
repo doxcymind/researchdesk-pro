@@ -34,11 +34,12 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
   const [activities, setActivities]       = useState<any[]>([])
   const [checklist, setChecklist]         = useState<ChecklistItem[]>([])
   const [animatedProgress, setAnimatedProgress] = useState(0)
-  const initRef = useRef(false)
+  const initRef = useRef<number | null>(null)
 
   useEffect(() => {
-    if (initRef.current) return
-    initRef.current = true
+    // Reset when projectId changes so a new workspace initialises correctly
+    if (initRef.current === projectId) return
+    initRef.current = projectId
     ;(async () => {
       await initializeChecklist()
       await fetchDashboardData()
@@ -46,46 +47,71 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
   }, [projectId])
 
   const initializeChecklist = async () => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) return
 
-    const { data: allRows } = await supabase
-      .from('publication_checks').select('id, item').eq('project_id', projectId).eq('user_id', user.id).order('id', { ascending: true })
-    if (allRows && allRows.length > 0) {
-      const seen = new Set<string>(); const toDelete: string[] = []
-      for (const row of allRows) { if (seen.has(row.item)) toDelete.push(row.id); else seen.add(row.item) }
-      if (toDelete.length) await supabase.from('publication_checks').delete().in('id', toDelete).eq('user_id', user.id)
-      return
+      const { data: allRows } = await supabase
+        .from('publication_checks').select('id, item').eq('project_id', projectId).eq('user_id', user.id).order('id', { ascending: true })
+      if (allRows && allRows.length > 0) {
+        const seen = new Set<string>(); const toDelete: string[] = []
+        for (const row of allRows) { if (seen.has(row.item)) toDelete.push(row.id); else seen.add(row.item) }
+        if (toDelete.length) await supabase.from('publication_checks').delete().in('id', toDelete).eq('user_id', user.id)
+        return
+      }
+      // Derive checklist directly from the actual sidebar sections so they always match
+      const baseSections = manuscriptSections ?? DEFAULT_SECTIONS
+      const defaults: string[] = baseSections.map(sectionToCheckItem)
+      await supabase.from('publication_checks').insert(
+        defaults.map(item => ({ project_id: projectId, user_id: user.id, item, completed: false }))
+      )
+    } catch (error) {
+      console.error('initializeChecklist error:', error)
     }
-    // Derive checklist directly from the actual sidebar sections so they always match
-    const baseSections = manuscriptSections ?? DEFAULT_SECTIONS
-    const defaults: string[] = baseSections.map(sectionToCheckItem)
-    await supabase.from('publication_checks').insert(
-      defaults.map(item => ({ project_id: projectId, user_id: user.id, item, completed: false }))
-    )
   }
 
   const fetchDashboardData = async () => {
-    const [{ count: docsCount }, { count: draftsCount }, { data: checks }, { data: activityData }] = await Promise.all([
-      supabase.from('uploads').select('*', { count: 'exact', head: true }).eq('project_id', projectId),
-      supabase.from('project_sections').select('*', { count: 'exact', head: true }).eq('project_id', projectId),
-      supabase.from('publication_checks').select('*').eq('project_id', projectId),
-      supabase.from('activity_logs').select('*').eq('project_id', projectId).order('created_at', { ascending: false }).limit(5),
-    ])
-    const seen = new Set<string>()
-    const unique = (checks || []).filter((c: ChecklistItem) => { if (seen.has(c.item)) return false; seen.add(c.item); return true })
-    setDocuments(docsCount || 0); setDrafts(draftsCount || 0)
-    setChecklist(unique)
-    const comp = unique.filter((c: ChecklistItem) => c.completed).length
-    setChecksCompleted(comp); setTotalChecks(unique.length)
-    setActivities(activityData || [])
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) return
+
+      const [{ count: docsCount }, { count: draftsCount }, { data: checks }, { data: activityData }] = await Promise.all([
+        supabase.from('uploads').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('user_id', user.id),
+        supabase.from('project_sections').select('*', { count: 'exact', head: true }).eq('project_id', projectId).eq('user_id', user.id),
+        supabase.from('publication_checks').select('*').eq('project_id', projectId).eq('user_id', user.id),
+        supabase.from('activity_logs').select('*').eq('project_id', projectId).eq('user_id', user.id).order('created_at', { ascending: false }).limit(5),
+      ])
+      const seen = new Set<string>()
+      const unique = (checks || []).filter((c: ChecklistItem) => { if (seen.has(c.item)) return false; seen.add(c.item); return true })
+      setDocuments(docsCount || 0); setDrafts(draftsCount || 0)
+      setChecklist(unique)
+      const comp = unique.filter((c: ChecklistItem) => c.completed).length
+      setChecksCompleted(comp); setTotalChecks(unique.length)
+      setActivities(activityData || [])
+    } catch (error) {
+      console.error('fetchDashboardData error:', error)
+    }
   }
 
   const toggleItem = async (id: string, current: boolean) => {
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return
-    await supabase.from('publication_checks').update({ completed: !current }).eq('id', id).eq('user_id', user.id)
-    fetchDashboardData()
+    // Optimistically update local state — no N+1 re-fetch
+    const newCompleted = !current
+    setChecklist(prev => prev.map(c => c.id === id ? { ...c, completed: newCompleted } : c))
+    setChecksCompleted(prev => newCompleted ? prev + 1 : prev - 1)
+
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) return
+      await supabase.from('publication_checks').update({ completed: newCompleted }).eq('id', id).eq('user_id', user.id)
+    } catch (error) {
+      // Roll back on error
+      console.error('toggleItem error:', error)
+      setChecklist(prev => prev.map(c => c.id === id ? { ...c, completed: current } : c))
+      setChecksCompleted(prev => current ? prev + 1 : prev - 1)
+    }
   }
 
   const progress = totalChecks > 0 ? Math.round((checksCompleted / totalChecks) * 100) : 0

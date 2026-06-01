@@ -1,10 +1,14 @@
 import { getAuthUser } from '@/lib/auth-helper'
 import { rateLimit } from '@/lib/rate-limit'
 import { geminiMultiTurn } from '@/lib/gemini'
+import { isScholarServer } from '@/lib/check-subscription'
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const scholar = await isScholarServer(user.id, user.email)
+  if (!scholar) return Response.json({ error: 'Scholar plan required' }, { status: 403 })
 
   const { allowed } = rateLimit(`${user.id}:chat`, 30, 60000)
   if (!allowed) return Response.json({ error: 'Rate limit exceeded. Please slow down.' }, { status: 429 })
@@ -16,11 +20,17 @@ export async function POST(req: Request) {
       return Response.json({ error: 'No messages provided' }, { status: 400 })
     }
 
+    // Truncate history to last 20 messages to prevent unbounded payload growth
+    const recentMessages = messages.slice(-20)
+
+    const safeTitle    = String(projectTitle || '').slice(0, 500)
+    const safeType     = String(studyType || '').slice(0, 100)
+
     const systemPrompt = `You are ResearchDesk AI — an expert medical research assistant embedded inside a researcher's workspace.
 
 Current project context:
-- Title: "${projectTitle}"
-- Study type: ${studyType}
+- Title: "${safeTitle}"
+- Study type: ${safeType}
 
 Your role:
 - Help the researcher write, structure, and improve their manuscript
@@ -35,7 +45,7 @@ Always stay in the context of their specific project when relevant.`
 
     // Convert OpenAI-style messages to Gemini format
     // The last message must be from 'user' — we pull it out and pass as the new message
-    const allMessages: { role: 'user' | 'model'; parts: { text: string }[] }[] = messages.map(
+    const allMessages: { role: 'user' | 'model'; parts: { text: string }[] }[] = recentMessages.map(
       (m: { role: string; content: string }) => ({
         role: m.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: m.content }],

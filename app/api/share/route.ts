@@ -28,8 +28,12 @@ export async function POST(req: NextRequest) {
     .eq('project_id', projectId).eq('user_id', user.id).eq('section', '__share_token__').single()
 
   if (existing) {
-    const existingToken = JSON.parse(existing.content).token
-    return NextResponse.json({ token: existingToken, url: `/share/${existingToken}` })
+    try {
+      const existingToken = JSON.parse(existing.content).token
+      return NextResponse.json({ token: existingToken, url: `/share/${existingToken}` })
+    } catch {
+      // Malformed content — fall through and create a new token
+    }
   }
 
   await supabase.from('project_sections').insert({
@@ -51,7 +55,13 @@ export async function GET(req: NextRequest) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
-  // Find project by token — uses service role to bypass RLS (public share lookup)
+  // Validate token is a UUID to prevent LIKE injection
+  const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+  if (!UUID_REGEX.test(token)) {
+    return NextResponse.json({ error: 'Invalid token format' }, { status: 400 })
+  }
+
+  // Find project by token — section value is __share_token__, content contains the UUID
   const { data: row } = await supabaseAdmin
     .from('project_sections').select('project_id, user_id')
     .eq('section', '__share_token__')

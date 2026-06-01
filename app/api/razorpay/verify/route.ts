@@ -26,6 +26,17 @@ export async function POST(req: Request) {
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   )
 
+  // Verify order belongs to this user (prevents one user from claiming another's payment)
+  const { data: orderRecord } = await supabase
+    .from('razorpay_orders')
+    .select('user_id')
+    .eq('order_id', razorpay_order_id)
+    .single()
+
+  if (!orderRecord || orderRecord.user_id !== user.id) {
+    return Response.json({ error: 'Order does not belong to this user' }, { status: 403 })
+  }
+
   await supabase.from('profiles').upsert({
     id: user.id,
     subscription_status: 'scholar',

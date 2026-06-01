@@ -10,13 +10,15 @@ interface UpgradeModalProps {
 
 export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
   const [loading, setLoading] = useState(false)
+  const [paymentError, setPaymentError] = useState<string | null>(null)
 
   const inter = "var(--font-inter),'DM Sans',system-ui,sans-serif"
   const cinzel = "var(--font-cinzel),'Cormorant Garamond',Georgia,serif"
 
   const handleUpgrade = async () => {
     setLoading(true)
-    await openRazorpayCheckout()
+    setPaymentError(null)
+    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
     setLoading(false)
   }
 
@@ -67,6 +69,12 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
             </div>
           ))}
         </div>
+
+        {paymentError && (
+          <div style={{ padding: '10px 14px', borderRadius: 10, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', color: '#f87171', fontSize: 12, marginBottom: 12, fontFamily: inter }}>
+            {paymentError}
+          </div>
+        )}
 
         {/* CTA */}
         <button

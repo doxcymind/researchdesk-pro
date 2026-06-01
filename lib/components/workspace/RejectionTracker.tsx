@@ -41,6 +41,7 @@ export default function RejectionTracker({
   const [notes, setNotes] = useState('')
   const [adding, setAdding] = useState(false)
   const [showForm, setShowForm] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   useEffect(() => {
     fetchSubmissions()
@@ -57,14 +58,16 @@ export default function RejectionTracker({
   }
 
   const addSubmission = async () => {
+    setFormError(null)
     if (!journalName || !submittedAt) {
-      alert('Journal name and date are required')
+      setFormError('Journal name and date are required')
       return
     }
 
     setAdding(true)
 
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
 
     const { error } = await supabase
@@ -156,6 +159,12 @@ export default function RejectionTracker({
             onChange={(e) => setNotes(e.target.value)}
             className="w-full bg-zinc-700 p-3 rounded-xl outline-none resize-none h-24"
           />
+
+          {formError && (
+            <div style={{ padding: '10px 14px', borderRadius: 8, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', color: '#f87171', fontSize: 12 }}>
+              {formError}
+            </div>
+          )}
 
           <button
             onClick={addSubmission}

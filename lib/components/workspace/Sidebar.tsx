@@ -12,28 +12,32 @@ interface SidebarProps {
 }
 
 const SECTION_ICONS: Record<string, string> = {
-  'Overview':           '◈',
-  'Abstract':           '✦',
-  'Introduction':       '⬡',
-  'Methods':            '⚙',
-  'Results':            '◉',
-  'Discussion':         '◎',
-  'References':         '⊞',
-  'Authors':            '👤',
-  'Uploads':            '↑',
-  'Citation Generator': '📎',
-  'Journal Selector':   '🗂',
+  'Overview':             '◈',
+  'Abstract':             '✦',
+  'Introduction':         '⬡',
+  'Case Presentation':    '📋',
+  'Case Presentations':   '📋',
+  'Literature Review':    '📖',
+  'Body':                 '✍',
+  'Methods':              '⚙',
+  'Results':              '◉',
+  'Discussion':           '◎',
+  'Conclusion':           '✓',
+  'Recommendations':      '💡',
+  'References':           '⊞',
+  'Authors':              '👤',
+  'Uploads':              '↑',
+  'Citation Generator':   '📎',
+  'Journal Selector':     '🗂',
   'Submission Checklist': '☑',
-  'Rejection Tracker':  '📊',
-  'AI Assistant':       '✧',
-  'Clinical Trials':    '🔬',
-  'DOI Resolver':       '🔍',
+  'Rejection Tracker':    '📊',
+  'AI Assistant':         '✧',
+  'Clinical Trials':      '🔬',
+  'DOI Resolver':         '🔍',
+  'Zotero':               'Z',
 }
 
-const SECTION_GROUPS = [
-  { label: 'MANUSCRIPT', items: ['Overview','Abstract','Introduction','Methods','Results','Discussion','References'] },
-  { label: 'TOOLS',      items: ['Authors','Uploads','Citation Generator','Journal Selector','Rejection Tracker','AI Assistant','Clinical Trials','DOI Resolver'] },
-]
+const TOOL_ITEMS = ['Authors','Uploads','Citation Generator','Zotero','Journal Selector','Submission Checklist','Rejection Tracker','AI Assistant','Clinical Trials','DOI Resolver']
 
 export default function Sidebar({ sections, selectedSection, setSelectedSection, onExit, onDelete }: SidebarProps) {
   const [showConfirm, setShowConfirm] = useState(false)
@@ -69,14 +73,17 @@ export default function Sidebar({ sections, selectedSection, setSelectedSection,
           </Link>
         </div>
 
-        {/* Nav */}
+        {/* Nav — groups derived dynamically from the sections prop */}
         <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 10px' }}>
-          {SECTION_GROUPS.map((group) => (
+          {[
+            { label: 'MANUSCRIPT', items: sections.filter(s => s !== 'Overview' && !TOOL_ITEMS.includes(s)) },
+            { label: 'TOOLS',      items: sections.filter(s => TOOL_ITEMS.includes(s)) },
+          ].map((group) => (
             <div key={group.label} style={{ marginBottom: 20 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(201,148,58,0.5)', letterSpacing: '0.1em', padding: '0 10px', marginBottom: 6 }}>
                 {group.label}
               </p>
-              {group.items.filter(i => sections.includes(i)).map((section) => {
+              {(group.label === 'MANUSCRIPT' ? ['Overview', ...group.items] : group.items).map((section) => {
                 const active = selectedSection === section
                 return (
                   <button key={section} onClick={() => setSelectedSection(section)} style={{

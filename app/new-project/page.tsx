@@ -1,10 +1,11 @@
 'use client'
-export const dynamic = 'force-dynamic'
 
-import { useState } from 'react'
+
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
+import { useSubscription } from '@/lib/hooks/useSubscription'
 
 const STUDY_TYPES = [
   { value: 'Case Report',       icon: '📋', desc: 'Single patient case documentation',  color: '#c9943a',  bg: 'rgba(201,148,58,0.1)',   border: 'rgba(201,148,58,0.3)' },
@@ -22,27 +23,46 @@ const NAV = [
   { label: 'Overview',    icon: '◈', href: '/dashboard' },
   { label: 'Projects',    icon: '⬡', href: '/projects' },
   { label: 'New Project', icon: '+', href: '/new-project' },
+  { label: 'Tools',       icon: '🔧', href: '/tools' },
+  { label: 'Settings',    icon: '⚙', href: '/settings' },
 ]
 
 export default function NewProjectPage() {
   const router = useRouter()
-  const [title, setTitle]       = useState('')
+  const [title, setTitle]         = useState('')
   const [studyType, setStudyType] = useState('')
-  const [loading, setLoading]   = useState(false)
-  const [step, setStep]         = useState<1|2>(1)  // 1=title, 2=type
+  const [loading, setLoading]     = useState(false)
+  const [step, setStep]           = useState<1|2>(1)
+  const [projectCount, setProjectCount] = useState(0)
+  const { isScholar, projectLimit } = useSubscription()
+
+  useEffect(() => {
+    const checkCount = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) { router.push('/login'); return }
+      const { count } = await supabase.from('projects').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+      setProjectCount(count || 0)
+    }
+    checkCount()
+  }, [])
+
+  const atLimit = !isScholar && projectCount >= projectLimit
 
   const handleCreate = async () => {
     if (!title.trim() || !studyType) return
+    if (atLimit) { router.push('/projects'); return }
     try {
       setLoading(true)
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { alert('Not logged in'); return }
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) { router.push('/login'); return }
       const { data, error } = await supabase.from('projects')
         .insert({ title: title.trim(), study_type: studyType, user_id: user.id })
         .select().single()
-      if (error) { alert(error.message); return }
+      if (error) { console.error(error.message); return }
       router.push(`/workspace/${data.id}`)
-    } catch (e) { console.log(e); alert('Something went wrong') }
+    } catch (e) { console.error(e) }
     finally { setLoading(false) }
   }
 
@@ -103,6 +123,14 @@ export default function NewProjectPage() {
         <div style={{ position: 'fixed', top: '20%', right: '15%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(201,148,58,0.05) 0%, transparent 70%)', pointerEvents: 'none' }}/>
 
         <div style={{ width: '100%', maxWidth: 700 }}>
+
+          {/* Limit warning */}
+          {atLimit && (
+            <div style={{ marginBottom: 24, padding: '14px 18px', borderRadius: 12, background: 'rgba(248,113,113,0.07)', border: '1px solid rgba(248,113,113,0.25)', animation: 'fadeInUp 0.3s both' }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: '#f87171', margin: '0 0 4px' }}>🔒 Project limit reached</p>
+              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.45)', margin: 0 }}>You've used all {projectLimit} free projects. <Link href="/projects" style={{ color: '#c9943a', textDecoration: 'underline' }}>Upgrade to Scholar</Link> for unlimited projects.</p>
+            </div>
+          )}
 
           {/* Header */}
           <div style={{ marginBottom: 44, animation: 'fadeInUp 0.4s both' }}>
@@ -237,7 +265,7 @@ export default function NewProjectPage() {
             </button>
 
             <p style={{ textAlign: 'center', fontSize: 11, color: 'rgba(240,232,208,0.2)', marginTop: 14 }}>
-              You can rename and change study type later from settings.
+              You can rename your project from the workspace at any time.
             </p>
           </div>
         </div>

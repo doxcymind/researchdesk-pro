@@ -55,7 +55,7 @@ export default function HomePage() {
       setWordIdx((wordIdx + 1) % words.length)
     }
     return () => clearTimeout(timeout)
-  })
+  }, [displayed, deleting, wordIdx])
 
   /* stat counters — trigger when in view */
   const statsRef = useRef<HTMLDivElement>(null)

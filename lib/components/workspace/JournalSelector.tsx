@@ -145,7 +145,8 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
 
   const saveJournal = async (journalName: string) => {
     setSaving(true); setSelected(journalName)
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (user) await supabase.from('projects').update({ target_journal: journalName }).eq('id', projectId).eq('user_id', user.id)
     setSaving(false); setSaved(true)
     setTimeout(() => setSaved(false), 2500)
@@ -181,7 +182,7 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
                 {selectedMeta.wordLimit && <span style={{ fontSize: 10, color: 'rgba(240,232,208,0.4)', padding: '2px 0' }}>{selectedMeta.wordLimit.toLocaleString()} word limit</span>}
               </div>
             </div>
-            <button onClick={async () => { setSelected(null); const { data: { user } } = await supabase.auth.getUser(); if (user) supabase.from('projects').update({ target_journal: null }).eq('id', projectId).eq('user_id', user.id) }}
+            <button onClick={async () => { setSelected(null); const { data: { session } } = await supabase.auth.getSession(); const user = session?.user; if (user) supabase.from('projects').update({ target_journal: null }).eq('id', projectId).eq('user_id', user.id) }}
               style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', background: 'none', border: 'none', cursor: 'pointer', flexShrink: 0 }}>
               Clear
             </button>

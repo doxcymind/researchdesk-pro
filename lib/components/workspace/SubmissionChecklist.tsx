@@ -59,7 +59,8 @@ export default function SubmissionChecklist({ projectId }: Props) {
   // Load saved state from DB on mount
   useEffect(() => {
     const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (!user) return
       const { data } = await supabase
         .from('project_sections')
@@ -82,7 +83,8 @@ export default function SubmissionChecklist({ projectId }: Props) {
 
   // Persist to DB whenever checklist or checked state changes
   const save = useCallback(async (cl: Checklist, ch: Record<string, boolean>) => {
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
     const content = JSON.stringify({ checklist: cl, checked: ch })
     const { data: existing } = await supabase

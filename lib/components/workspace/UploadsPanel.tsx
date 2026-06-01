@@ -28,13 +28,15 @@ export default function UploadsPanel({ projectId }: UploadsPanelProps) {
   const [files, setFiles]         = useState<Upload[]>([])
   const [loading, setLoading]     = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
+  const [panelError, setPanelError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => { fetchFiles() }, [])
 
   const fetchFiles = async () => {
     setLoading(true)
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
     if (!user) return
 
     const { data, error } = await supabase
@@ -49,27 +51,29 @@ export default function UploadsPanel({ projectId }: UploadsPanelProps) {
   }
 
   const handleFile = async (file: File) => {
+    setPanelError(null)
     if (!file.name.toLowerCase().endsWith('.pdf')) {
-      alert('Only PDF files are supported')
+      setPanelError('Only PDF files are supported')
       return
     }
     if (file.size > MAX_FILE_SIZE) {
-      alert(`File too large. Maximum size is ${formatSize(MAX_FILE_SIZE)}.`)
+      setPanelError(`File too large. Maximum size is ${formatSize(MAX_FILE_SIZE)}.`)
       return
     }
 
     try {
       setUploading(true)
 
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { alert('Not logged in'); return }
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) { setPanelError('Not logged in'); return }
 
       // Storage path includes user_id for proper isolation
       const filePath = `${user.id}/${projectId}/${Date.now()}-${file.name}`
 
       const { error: uploadError } = await supabase.storage
         .from('research-files').upload(filePath, file)
-      if (uploadError) { alert('Upload failed: ' + uploadError.message); return }
+      if (uploadError) { setPanelError('Upload failed: ' + uploadError.message); return }
 
       await supabase.from('uploads').insert({
         project_id: projectId,
@@ -85,8 +89,8 @@ export default function UploadsPanel({ projectId }: UploadsPanelProps) {
       })
       await fetchFiles()
     } catch (e) {
-      console.log(e)
-      alert('Something went wrong')
+      console.error(e)
+      setPanelError('Something went wrong. Please try again.')
     } finally {
       setUploading(false)
     }
@@ -95,7 +99,7 @@ export default function UploadsPanel({ projectId }: UploadsPanelProps) {
   const openFile = async (filePath: string) => {
     const { data, error } = await supabase.storage
       .from('research-files').createSignedUrl(filePath, 60)
-    if (error || !data?.signedUrl) { alert('Could not open file'); return }
+    if (error || !data?.signedUrl) { setPanelError('Could not open file'); return }
     window.open(data.signedUrl, '_blank')
   }
 
@@ -106,12 +110,13 @@ export default function UploadsPanel({ projectId }: UploadsPanelProps) {
       // Remove from storage
       await supabase.storage.from('research-files').remove([upload.file_path])
       // Remove from DB
-      const { data: { user } } = await supabase.auth.getUser()
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
       if (user) await supabase.from('uploads').delete().eq('id', upload.id).eq('user_id', user.id)
       setFiles(prev => prev.filter(f => f.id !== upload.id))
     } catch (e) {
-      console.log(e)
-      alert('Failed to delete file')
+      console.error(e)
+      setPanelError('Failed to delete file')
     } finally {
       setDeletingId(null)
     }
@@ -125,6 +130,13 @@ export default function UploadsPanel({ projectId }: UploadsPanelProps) {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
+
+      {panelError && (
+        <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', color: '#f87171', fontSize: 13, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>{panelError}</span>
+          <button onClick={() => setPanelError(null)} style={{ background: 'none', border: 'none', color: 'rgba(248,113,113,0.6)', cursor: 'pointer', fontSize: 14, padding: 0, marginLeft: 12 }}>✕</button>
+        </div>
+      )}
 
       {/* Header */}
       <div>

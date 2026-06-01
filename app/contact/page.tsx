@@ -12,13 +12,15 @@ export default function ContactPage() {
   const [email, setEmail]   = useState('')
   const [topic, setTopic]   = useState('')
   const [message, setMessage] = useState('')
-  const [sent, setSent]     = useState(false)
+  const [sent, setSent]       = useState(false)
   const [loading, setLoading] = useState(false)
+  const [formError, setFormError] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!name || !email || !topic || !message) return
     setLoading(true)
+    setFormError(null)
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
@@ -26,10 +28,10 @@ export default function ContactPage() {
         body: JSON.stringify({ name, email, topic, message }),
       })
       const data = await res.json()
-      if (!res.ok) { alert(data.error || 'Failed to send. Try again.'); return }
+      if (!res.ok) { setFormError(data.error || 'Failed to send. Try again.'); return }
       setSent(true)
     } catch {
-      alert('Network error. Please try again.')
+      setFormError('Network error. Please try again.')
     } finally {
       setLoading(false)
     }
@@ -150,6 +152,12 @@ export default function ContactPage() {
                   />
                   <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.25)', margin: '6px 0 0', textAlign: 'right' }}>{message.length} characters</p>
                 </div>
+
+                {formError && (
+                  <div style={{ padding: '12px 16px', borderRadius: 10, background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.25)', color: '#f87171', fontSize: 13 }}>
+                    {formError}
+                  </div>
+                )}
 
                 <button type="submit" disabled={loading || !name || !email || !topic || !message}
                   style={{
