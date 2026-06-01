@@ -32,7 +32,7 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
   const [loading, setLoading]     = useState(true)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [panelError, setPanelError] = useState<string | null>(null)
-  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [suggestions, setSuggestions] = useState<{ category: string; label: string }[]>([])
   const [sugLoading, setSugLoading]   = useState(false)
   const [sugFailed, setSugFailed]     = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -180,26 +180,66 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
 
       {/* AI Upload Suggestions */}
       <div style={{ padding: '16px 20px', borderRadius: 14, background: 'rgba(201,148,58,0.04)', border: '1px solid rgba(201,148,58,0.15)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: (sugLoading || suggestions.length > 0 || sugFailed) ? 12 : 0 }}>
-          <span style={{ fontSize: 13, fontWeight: 700, color: '#e8b84a' }}>✦ What to upload</span>
-          <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>AI-powered · based on your topic</span>
-          {sugLoading && <span style={{ fontSize: 11, color: 'rgba(201,148,58,0.4)', marginLeft: 'auto' }}>Thinking…</span>}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: (sugLoading || suggestions.length > 0 || sugFailed) ? 14 : 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#e8b84a' }}>✦ What to upload</span>
+            <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>AI-powered · based on your study type &amp; topic</span>
+          </div>
+          {sugLoading && <span style={{ fontSize: 11, color: 'rgba(201,148,58,0.4)' }}>Analysing your study…</span>}
+          {!sugLoading && suggestions.length > 0 && (
+            <button onClick={fetchSuggestions} style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>↺ Refresh</button>
+          )}
         </div>
+
         {sugLoading && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[1,2,3].map(i => <div key={i} style={{ height: 32, borderRadius: 8, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite' }} />)}
+            {[1,2,3,4].map(i => <div key={i} style={{ height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite' }} />)}
           </div>
         )}
+
         {!sugLoading && suggestions.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {suggestions.map((s, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, padding: '10px 14px', borderRadius: 10, background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                <span style={{ fontSize: 14, marginTop: 1, flexShrink: 0 }}>📄</span>
-                <span style={{ fontSize: 13, color: 'rgba(240,232,208,0.7)', lineHeight: 1.6 }}>{s}</span>
-              </div>
-            ))}
+            {suggestions.map((s, i) => {
+              const icon: Record<string, string> = {
+                'Radiology': '🔬', 'Histopathology': '🧫', 'Laboratory': '🧪',
+                'Clinical History': '📋', 'Clinical Images': '📸', 'Operative Notes': '🔪',
+                'Literature': '📖', 'Consent & Ethics': '📝',
+              }
+              const colorMap: Record<string, string> = {
+                'Radiology': 'rgba(99,179,237,0.12)', 'Histopathology': 'rgba(167,139,250,0.12)',
+                'Laboratory': 'rgba(52,211,153,0.10)', 'Clinical History': 'rgba(201,148,58,0.10)',
+                'Clinical Images': 'rgba(249,115,22,0.10)', 'Operative Notes': 'rgba(248,113,113,0.10)',
+                'Literature': 'rgba(240,232,208,0.06)', 'Consent & Ethics': 'rgba(52,211,153,0.08)',
+              }
+              const borderMap: Record<string, string> = {
+                'Radiology': 'rgba(99,179,237,0.2)', 'Histopathology': 'rgba(167,139,250,0.2)',
+                'Laboratory': 'rgba(52,211,153,0.2)', 'Clinical History': 'rgba(201,148,58,0.2)',
+                'Clinical Images': 'rgba(249,115,22,0.2)', 'Operative Notes': 'rgba(248,113,113,0.2)',
+                'Literature': 'rgba(240,232,208,0.1)', 'Consent & Ethics': 'rgba(52,211,153,0.15)',
+              }
+              const textMap: Record<string, string> = {
+                'Radiology': 'rgba(99,179,237,0.8)', 'Histopathology': 'rgba(167,139,250,0.8)',
+                'Laboratory': 'rgba(52,211,153,0.8)', 'Clinical History': '#e8b84a',
+                'Clinical Images': 'rgba(249,115,22,0.8)', 'Operative Notes': 'rgba(248,113,113,0.8)',
+                'Literature': 'rgba(240,232,208,0.5)', 'Consent & Ethics': 'rgba(52,211,153,0.7)',
+              }
+              const bg     = colorMap[s.category]  || 'rgba(255,255,255,0.03)'
+              const border = borderMap[s.category] || 'rgba(255,255,255,0.08)'
+              const catClr = textMap[s.category]   || 'rgba(240,232,208,0.4)'
+              const emoji  = icon[s.category]      || '📄'
+              return (
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: bg, border: `1px solid ${border}` }}>
+                  <span style={{ fontSize: 18, flexShrink: 0 }}>{emoji}</span>
+                  <div style={{ minWidth: 0 }}>
+                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: catClr, display: 'block', marginBottom: 2 }}>{s.category}</span>
+                    <span style={{ fontSize: 13, color: 'rgba(240,232,208,0.75)', lineHeight: 1.5 }}>{s.label}</span>
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
+
         {!sugLoading && sugFailed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.25)', margin: 0 }}>Could not load suggestions.</p>
