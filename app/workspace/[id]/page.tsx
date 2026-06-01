@@ -284,6 +284,7 @@ export default function WorkspacePage() {
         body: JSON.stringify({
           section: selectedSection,
           topic: project.title,
+          projectId: project.id,
         }),
       })
 
@@ -311,7 +312,7 @@ export default function WorkspacePage() {
       const response = await apiFetch('/api/review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ section: selectedSection, topic: project.title, content }),
+        body: JSON.stringify({ section: selectedSection, topic: project.title, content, projectId: project.id }),
       })
       const data = await response.json()
       if (data.error) { console.error('Review error:', data.error); return }

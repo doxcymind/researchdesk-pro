@@ -2,6 +2,37 @@ import { getAuthUser } from '@/lib/auth-helper'
 import { rateLimit } from '@/lib/rate-limit'
 import { geminiMultiTurn } from '@/lib/gemini'
 import { isScholarServer } from '@/lib/check-subscription'
+import { createClient } from '@supabase/supabase-js'
+import { extractText } from 'unpdf'
+
+async function getUploadContext(userId: string, projectId: number): Promise<string> {
+  if (!projectId) return ''
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    )
+    const { data: uploads } = await supabase
+      .from('uploads').select('file_name, file_path')
+      .eq('project_id', projectId).eq('user_id', userId)
+      .order('created_at', { ascending: false }).limit(4)
+
+    if (!uploads?.length) return ''
+
+    const parts: string[] = []
+    for (const u of uploads) {
+      try {
+        const { data } = await supabase.storage.from('research-files').download(u.file_path)
+        if (!data) continue
+        const buf = await data.arrayBuffer()
+        const { text } = await extractText(new Uint8Array(buf), { mergePages: true })
+        if (text?.trim()) parts.push(`[${u.file_name}]\n${text.trim().slice(0, 3000)}`)
+      } catch { /* skip */ }
+    }
+    return parts.join('\n\n').slice(0, 10000)
+  } catch { return '' }
+}
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
@@ -14,7 +45,7 @@ export async function POST(req: Request) {
   if (!allowed) return Response.json({ error: 'Rate limit exceeded. Please slow down.' }, { status: 429 })
 
   try {
-    const { messages, projectTitle, studyType } = await req.json()
+    const { messages, projectTitle, studyType, projectId } = await req.json()
 
     if (!messages || !Array.isArray(messages)) {
       return Response.json({ error: 'No messages provided' }, { status: 400 })
@@ -26,11 +57,16 @@ export async function POST(req: Request) {
     const safeTitle    = String(projectTitle || '').slice(0, 500)
     const safeType     = String(studyType || '').slice(0, 100)
 
+    const uploadContext = projectId ? await getUploadContext(user.id, Number(projectId)) : ''
+    const uploadBlock   = uploadContext
+      ? `\n\nReference documents uploaded by the researcher:\n${uploadContext}\n\nWhen answering, reference specific information from these documents where relevant.`
+      : ''
+
     const systemPrompt = `You are ResearchDesk AI — an expert medical research assistant embedded inside a researcher's workspace.
 
 Current project context:
 - Title: "${safeTitle}"
-- Study type: ${safeType}
+- Study type: ${safeType}${uploadBlock}
 
 Your role:
 - Help the researcher write, structure, and improve their manuscript

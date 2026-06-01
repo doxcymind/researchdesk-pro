@@ -2,6 +2,37 @@ import { getAuthUser } from '@/lib/auth-helper'
 import { rateLimit } from '@/lib/rate-limit'
 import { geminiChat } from '@/lib/gemini'
 import { isScholarServer } from '@/lib/check-subscription'
+import { createClient } from '@supabase/supabase-js'
+import { extractText } from 'unpdf'
+
+async function getUploadContext(userId: string, projectId: number): Promise<string> {
+  if (!projectId) return ''
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { auth: { persistSession: false } }
+    )
+    const { data: uploads } = await supabase
+      .from('uploads').select('file_name, file_path')
+      .eq('project_id', projectId).eq('user_id', userId)
+      .order('created_at', { ascending: false }).limit(4)
+
+    if (!uploads?.length) return ''
+
+    const parts: string[] = []
+    for (const u of uploads) {
+      try {
+        const { data } = await supabase.storage.from('research-files').download(u.file_path)
+        if (!data) continue
+        const buf = await data.arrayBuffer()
+        const { text } = await extractText(new Uint8Array(buf), { mergePages: true })
+        if (text?.trim()) parts.push(`[${u.file_name}]\n${text.trim().slice(0, 3000)}`)
+      } catch { /* skip */ }
+    }
+    return parts.join('\n\n').slice(0, 10000)
+  } catch { return '' }
+}
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
@@ -14,7 +45,7 @@ export async function POST(req: Request) {
   if (!allowed) return Response.json({ error: 'Rate limit exceeded. Please slow down.' }, { status: 429 })
 
   try {
-    const { section, topic, content } = await req.json()
+    const { section, topic, content, projectId } = await req.json()
 
     if (!section || !topic || !content) return Response.json({ error: 'section, topic, and content are required' }, { status: 400 })
     if (content.trim().length < 20) {
@@ -25,10 +56,16 @@ export async function POST(req: Request) {
     const safeTopic    = String(topic).slice(0, 500)
     const safeContent  = String(content).slice(0, 8000)
 
+    // Fetch uploaded reference PDFs if available
+    const uploadContext = projectId ? await getUploadContext(user.id, Number(projectId)) : ''
+    const uploadBlock   = uploadContext
+      ? `\n\nThe researcher has uploaded the following reference documents for this project. Use them to give more specific, grounded feedback:\n\n${uploadContext}`
+      : ''
+
     const raw = await geminiChat(
       `You are an expert academic mentor and senior medical journal editor. Your role is NOT to write for the researcher — it is to TEACH them to write better. You give honest, specific, educational feedback that helps the researcher understand what to improve and why. You ask guiding questions to make them think. You explain the standards journals expect. Always respond with valid JSON only.`,
 
-      `You are mentoring a researcher writing the "${safeSection}" section of their medical manuscript titled "${safeTopic}".
+      `You are mentoring a researcher writing the "${safeSection}" section of their medical manuscript titled "${safeTopic}".${uploadBlock}
 
 Read what they have written and give mentor-style feedback. Your feedback should:
 - Teach them WHY something is wrong, not just that it is wrong

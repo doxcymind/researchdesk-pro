@@ -97,6 +97,7 @@ export default function AIAssistantPanel({ projectTitle, studyType, projectId }:
           messages: updated,
           projectTitle,
           studyType,
+          projectId,
         }),
       })
       const data = await res.json()
