@@ -16,6 +16,9 @@ interface Article {
   volume: string
   issue: string
   pages: string
+  source?: 'pubmed' | 'semantic_scholar' | 'europe_pmc'
+  openAccess?: boolean
+  pdfUrl?: string | null
 }
 
 interface Props {
@@ -47,7 +50,7 @@ export default function LiteratureSearch({ projectId, projectTitle, studyType }:
     setLoading(true)
     setSearched(true)
     try {
-      const res = await apiFetch(`/api/pubmed?q=${encodeURIComponent(q)}&max=25`)
+      const res = await apiFetch(`/api/literature?q=${encodeURIComponent(q)}&max=10`)
       const data = await res.json()
       setArticles(data.articles || [])
     } catch {
@@ -168,12 +171,18 @@ export default function LiteratureSearch({ projectId, projectTitle, studyType }:
 
               {/* Authors + meta */}
               <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.45)', margin: '0 0 4px', lineHeight: 1.5 }}>{article.authors}</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
                 <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', fontStyle: 'italic' }}>{article.journal}</span>
                 {article.date && <span style={{ fontSize: 10, color: 'rgba(240,232,208,0.25)' }}>· {article.date}</span>}
-                {article.pubtype && (
-                  <span style={{ fontSize: 9, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-                    {article.pubtype.split(',')[0].trim()}
+                {article.pubtype && <span style={{ fontSize: 9, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.2)', padding: '1px 6px', borderRadius: 8, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{article.pubtype.split(',')[0].trim()}</span>}
+                {article.openAccess && <span style={{ fontSize: 9, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', padding: '1px 6px', borderRadius: 8 }}>Open Access</span>}
+                {article.source && (
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 6px', borderRadius: 8,
+                    color: article.source === 'pubmed' ? '#f59e0b' : article.source === 'semantic_scholar' ? '#a78bfa' : '#38bdf8',
+                    background: article.source === 'pubmed' ? 'rgba(245,158,11,0.08)' : article.source === 'semantic_scholar' ? 'rgba(167,139,250,0.08)' : 'rgba(56,189,248,0.08)',
+                    border: `1px solid ${article.source === 'pubmed' ? 'rgba(245,158,11,0.2)' : article.source === 'semantic_scholar' ? 'rgba(167,139,250,0.2)' : 'rgba(56,189,248,0.2)'}`,
+                  }}>
+                    {article.source === 'pubmed' ? 'PubMed' : article.source === 'semantic_scholar' ? 'Semantic Scholar' : 'Europe PMC'}
                   </span>
                 )}
               </div>
@@ -198,6 +207,12 @@ export default function LiteratureSearch({ projectId, projectTitle, studyType }:
                   <a href={`https://doi.org/${article.doi}`} target="_blank" rel="noopener noreferrer"
                     style={{ padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, color: 'rgba(240,232,208,0.35)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
                     DOI ↗
+                  </a>
+                )}
+                {article.pdfUrl && (
+                  <a href={article.pdfUrl} target="_blank" rel="noopener noreferrer"
+                    style={{ padding: '5px 12px', borderRadius: 8, fontSize: 11, fontWeight: 600, color: '#34d399', background: 'rgba(52,211,153,0.06)', border: '1px solid rgba(52,211,153,0.2)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                    PDF ↗
                   </a>
                 )}
               </div>

@@ -10,6 +10,8 @@ interface Article {
   id: string; title: string; authors: string; journal: string
   date: string; doi: string | null; url: string; pubtype: string
   volume: string; issue: string; pages: string
+  source?: 'pubmed' | 'semantic_scholar' | 'europe_pmc'
+  openAccess?: boolean; pdfUrl?: string | null
 }
 interface ChecklistItem { id: string; item: string; completed: boolean }
 interface SectionDraft { section: string; content: string }
@@ -94,7 +96,7 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
     if (!q.trim()) return
     setLitLoading(true)
     try {
-      const res = await apiFetch(`/api/pubmed?q=${encodeURIComponent(q)}&max=20`)
+      const res = await apiFetch(`/api/literature?q=${encodeURIComponent(q)}&max=10`)
       const data = await res.json()
       setLitArticles(data.articles || [])
     } catch { setLitArticles([]) }
@@ -375,12 +377,18 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
                       </a>
                       {/* Authors + journal */}
                       <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.4)', margin: '0 0 4px', lineHeight: 1.4 }}>{article.authors}</p>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 9 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap', marginBottom: 9 }}>
                         <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', fontStyle: 'italic' }}>{article.journal}</span>
                         {article.date && <span style={{ fontSize: 10, color: 'rgba(240,232,208,0.22)' }}>· {article.date}</span>}
-                        {article.pubtype && (
-                          <span style={{ fontSize: 9, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.15)', padding: '1px 5px', borderRadius: 5 }}>
-                            {article.pubtype.split(',')[0].trim()}
+                        {article.pubtype && <span style={{ fontSize: 9, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.15)', padding: '1px 5px', borderRadius: 5 }}>{article.pubtype.split(',')[0].trim()}</span>}
+                        {(article as any).openAccess && <span style={{ fontSize: 9, fontWeight: 700, color: '#34d399', background: 'rgba(52,211,153,0.08)', border: '1px solid rgba(52,211,153,0.2)', padding: '1px 5px', borderRadius: 5 }}>Open Access</span>}
+                        {(article as any).source && (
+                          <span style={{ fontSize: 9, fontWeight: 700, padding: '1px 5px', borderRadius: 5,
+                            color: (article as any).source === 'pubmed' ? '#f59e0b' : (article as any).source === 'semantic_scholar' ? '#a78bfa' : '#38bdf8',
+                            background: (article as any).source === 'pubmed' ? 'rgba(245,158,11,0.08)' : (article as any).source === 'semantic_scholar' ? 'rgba(167,139,250,0.08)' : 'rgba(56,189,248,0.08)',
+                            border: `1px solid ${(article as any).source === 'pubmed' ? 'rgba(245,158,11,0.2)' : (article as any).source === 'semantic_scholar' ? 'rgba(167,139,250,0.2)' : 'rgba(56,189,248,0.2)'}`,
+                          }}>
+                            {(article as any).source === 'pubmed' ? 'PubMed' : (article as any).source === 'semantic_scholar' ? 'Semantic Scholar' : 'Europe PMC'}
                           </span>
                         )}
                       </div>
