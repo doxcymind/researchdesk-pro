@@ -295,14 +295,14 @@ export default function DashboardPage() {
         .hero-ring {
           background: conic-gradient(
             from var(--ring-angle),
-            #c9943a 0%,
-            rgba(167,139,250,0.9) 20%,
-            #34d399 40%,
-            #60a5fa 60%,
-            rgba(249,115,22,0.9) 80%,
-            #c9943a 100%
+            rgba(201,148,58,0.15) 0%,
+            rgba(201,148,58,0.6) 15%,
+            rgba(232,184,74,0.9) 20%,
+            rgba(201,148,58,0.6) 25%,
+            rgba(201,148,58,0.15) 40%,
+            rgba(201,148,58,0.08) 100%
           );
-          animation: spinRing 4s linear infinite;
+          animation: spinRing 5s linear infinite;
         }
         .skel {
           background: rgba(255,255,255,0.07);
