@@ -197,7 +197,7 @@ export default function DashboardPage() {
           <div style={{
             position: 'relative', zIndex: 1, padding: '32px 36px',
             borderRadius: 24, overflow: 'hidden',
-            background: 'linear-gradient(135deg, rgba(201,148,58,0.08) 0%, rgba(5,8,15,0.95) 50%, rgba(167,139,250,0.05) 100%)',
+            background: 'linear-gradient(135deg, rgba(201,148,58,0.08) 0%, #080c18 40%, #080c18 100%)',
           }}>
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
               <div>
