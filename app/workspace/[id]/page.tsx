@@ -381,6 +381,15 @@ export default function WorkspacePage() {
     }
   }
 
+  const renameProject = async (newTitle: string) => {
+    if (!project) return
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    if (!user) return
+    await supabase.from('projects').update({ title: newTitle }).eq('id', project.id).eq('user_id', user.id)
+    setProject(p => p ? { ...p, title: newTitle } : p)
+  }
+
   const logActivity = async (action: string) => {
     if (!project) return
 
@@ -427,6 +436,7 @@ export default function WorkspacePage() {
               studyType={project.study_type}
               onExport={exportManuscript}
               onShare={shareManuscript}
+              onRename={renameProject}
             />
 
             <div style={{ padding: '4px 0', minHeight: 500 }}>

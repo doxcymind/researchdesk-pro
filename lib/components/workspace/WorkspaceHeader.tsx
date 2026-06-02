@@ -1,16 +1,48 @@
 'use client'
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 
 interface WorkspaceHeaderProps {
   title: string
   studyType: string
   onExport?: () => Promise<void>
   onShare?: () => Promise<void>
+  onRename?: (newTitle: string) => Promise<void>
 }
 
-export default function WorkspaceHeader({ title, studyType, onExport, onShare }: WorkspaceHeaderProps) {
+export default function WorkspaceHeader({ title, studyType, onExport, onShare, onRename }: WorkspaceHeaderProps) {
   const [exporting, setExporting] = useState(false)
   const [sharing, setSharing] = useState(false)
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(title)
+  const [saving, setSaving] = useState(false)
+  const [saved, setSaved] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  // Keep draft in sync if parent title changes
+  useEffect(() => { if (!editing) setDraft(title) }, [title, editing])
+
+  const startEdit = () => {
+    if (!onRename) return
+    setDraft(title)
+    setEditing(true)
+    setTimeout(() => { inputRef.current?.select() }, 10)
+  }
+
+  const commitEdit = async () => {
+    const trimmed = draft.trim()
+    if (!trimmed || trimmed === title) { setEditing(false); setDraft(title); return }
+    setSaving(true)
+    await onRename?.(trimmed)
+    setSaving(false)
+    setEditing(false)
+    setSaved(true)
+    setTimeout(() => setSaved(false), 2000)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') { e.preventDefault(); commitEdit() }
+    if (e.key === 'Escape') { setEditing(false); setDraft(title) }
+  }
 
   const handleExport = async () => {
     if (!onExport) return
@@ -38,13 +70,67 @@ export default function WorkspaceHeader({ title, studyType, onExport, onShare }:
       justifyContent: 'space-between',
       gap: 12,
     }}>
-      <div style={{ minWidth: 0 }}>
+      <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{ fontSize: 11, color: 'rgba(201,148,58,0.6)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4, fontWeight: 600 }}>
           Current Project
         </p>
-        <h1 style={{ fontSize: 'clamp(16px, 3vw, 24px)', fontWeight: 600, color: '#f0e8d0', letterSpacing: '0.01em', margin: 0, fontFamily: 'var(--font-cinzel), Cormorant Garamond, Georgia, serif', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-          {title}
-        </h1>
+
+        {editing ? (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <input
+              ref={inputRef}
+              value={draft}
+              onChange={e => setDraft(e.target.value)}
+              onBlur={commitEdit}
+              onKeyDown={handleKeyDown}
+              disabled={saving}
+              style={{
+                fontSize: 'clamp(16px, 3vw, 24px)', fontWeight: 600,
+                color: '#f0e8d0', background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(201,148,58,0.4)', borderRadius: 8,
+                padding: '4px 10px', outline: 'none', width: '100%',
+                fontFamily: 'var(--font-cinzel), Cormorant Garamond, Georgia, serif',
+                letterSpacing: '0.01em',
+              }}
+              autoFocus
+            />
+            <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+              ↵ save · esc cancel
+            </span>
+          </div>
+        ) : (
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+            <h1
+              onClick={startEdit}
+              title={onRename ? 'Click to rename' : undefined}
+              style={{
+                fontSize: 'clamp(16px, 3vw, 24px)', fontWeight: 600,
+                color: '#f0e8d0', letterSpacing: '0.01em', margin: 0,
+                fontFamily: 'var(--font-cinzel), Cormorant Garamond, Georgia, serif',
+                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                cursor: onRename ? 'text' : 'default',
+              }}
+            >
+              {title}
+            </h1>
+            {onRename && (
+              <button
+                onClick={startEdit}
+                title="Rename project"
+                style={{
+                  flexShrink: 0, background: 'none', border: 'none', cursor: 'pointer',
+                  padding: '3px 6px', borderRadius: 6, fontSize: 12,
+                  color: 'rgba(240,232,208,0.2)', transition: 'color 0.15s',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.color = 'rgba(201,148,58,0.7)')}
+                onMouseLeave={e => (e.currentTarget.style.color = 'rgba(240,232,208,0.2)')}
+              >
+                ✎
+              </button>
+            )}
+            {saved && <span style={{ fontSize: 11, color: '#34d399', flexShrink: 0 }}>✓ Renamed</span>}
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 }}>
