@@ -186,11 +186,12 @@ export default function DashboardPage() {
 
           {/* ── CINEMATIC HERO ── */}
           <div style={{ position: 'relative', marginBottom: 28, padding: 2, borderRadius: 26, overflow: 'hidden' }}>
-            {/* oversized spinning conic — clipped to reveal only the 2px rim */}
+            {/* oversized spinning conic — circular so no rectangular edge is visible */}
             <div className="hero-ring" style={{
               position: 'absolute',
               top: '50%', left: '50%',
-              width: '200%', height: '200%',
+              width: '250%', height: '600%',
+              borderRadius: '50%',
               transform: 'translate(-50%, -50%)',
               zIndex: 0,
             }} />
