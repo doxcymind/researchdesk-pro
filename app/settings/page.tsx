@@ -15,6 +15,30 @@ export default function SettingsPage() {
   const { isScholar, plan } = useSubscription()
   const [checkoutLoading, setCheckoutLoading] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [deleting, setDeleting] = useState(false)
+  const [deleteError, setDeleteError] = useState<string | null>(null)
+
+  const handleDeleteAccount = async () => {
+    if (deleteConfirm !== 'DELETE') return
+    setDeleting(true)
+    setDeleteError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (!res.ok) throw new Error('Failed to delete account')
+      await supabase.auth.signOut()
+      router.push('/')
+    } catch (e) {
+      setDeleteError('Something went wrong. Please try again.')
+      setDeleting(false)
+    }
+  }
 
   const handleUpgrade = async () => {
     setCheckoutLoading(true)
@@ -107,7 +131,71 @@ export default function SettingsPage() {
           </div>
         </div>
 
+        {/* Danger Zone */}
+        <div style={{ marginTop: 48, padding: '28px', borderRadius: 16, background: 'rgba(248,71,71,0.03)', border: '1px solid rgba(248,71,71,0.15)' }}>
+          <p style={{ fontSize: 11, color: 'rgba(248,71,71,0.6)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 6px', fontWeight: 700 }}>Danger Zone</p>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16 }}>
+            <div>
+              <p style={{ fontSize: 14, fontWeight: 600, color: '#f0e8d0', margin: '0 0 4px' }}>Delete Account</p>
+              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>Permanently delete your account and all projects. This cannot be undone.</p>
+            </div>
+            <button onClick={() => setShowDeleteModal(true)} style={{
+              padding: '9px 20px', borderRadius: 9, background: 'transparent',
+              border: '1px solid rgba(248,71,71,0.35)', color: '#f87171',
+              fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: inter,
+              whiteSpace: 'nowrap', transition: 'all 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,71,71,0.08)'; e.currentTarget.style.borderColor = 'rgba(248,71,71,0.6)' }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(248,71,71,0.35)' }}
+            >
+              Delete Account
+            </button>
+          </div>
+        </div>
+
       </main>
+
+      {/* Delete Modal */}
+      {showDeleteModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div style={{
+            background: '#0c0e18', border: '1px solid rgba(248,71,71,0.25)',
+            borderRadius: 16, padding: '36px', maxWidth: 420, width: '100%',
+          }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: '#f0e8d0', margin: '0 0 10px', fontFamily: cinzel }}>Delete your account?</p>
+            <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.5)', margin: '0 0 24px', lineHeight: 1.7 }}>
+              This will permanently delete all your projects, sections, references and uploads. This action <strong style={{ color: '#f87171' }}>cannot be undone</strong>.
+            </p>
+            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', margin: '0 0 8px' }}>Type <strong style={{ color: '#f87171' }}>DELETE</strong> to confirm:</p>
+            <input
+              value={deleteConfirm}
+              onChange={e => setDeleteConfirm(e.target.value)}
+              placeholder="DELETE"
+              style={{
+                width: '100%', boxSizing: 'border-box', padding: '10px 14px',
+                background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(248,71,71,0.25)',
+                borderRadius: 8, color: '#f87171', fontSize: 14, outline: 'none',
+                marginBottom: 20, fontFamily: inter,
+              }}
+            />
+            {deleteError && <p style={{ fontSize: 12, color: '#f87171', margin: '0 0 12px' }}>{deleteError}</p>}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => { setShowDeleteModal(false); setDeleteConfirm(''); setDeleteError(null) }}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,232,208,0.6)', fontSize: 13, cursor: 'pointer', fontFamily: inter }}>
+                Cancel
+              </button>
+              <button onClick={handleDeleteAccount} disabled={deleteConfirm !== 'DELETE' || deleting}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, background: deleteConfirm === 'DELETE' ? 'rgba(248,71,71,0.15)' : 'rgba(255,255,255,0.03)', border: `1px solid ${deleteConfirm === 'DELETE' ? 'rgba(248,71,71,0.5)' : 'rgba(255,255,255,0.08)'}`, color: deleteConfirm === 'DELETE' ? '#f87171' : 'rgba(240,232,208,0.2)', fontSize: 13, fontWeight: 700, cursor: deleteConfirm === 'DELETE' ? 'pointer' : 'not-allowed', fontFamily: inter, transition: 'all 0.2s' }}>
+                {deleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <style>{`@keyframes spin { to { transform: rotate(360deg) } }`}</style>
     </div>

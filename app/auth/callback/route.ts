@@ -32,10 +32,25 @@ export async function GET(request: NextRequest) {
     }
   )
 
-  const { error } = await supabase.auth.exchangeCodeForSession(code)
+  const { data, error } = await supabase.auth.exchangeCodeForSession(code)
 
   if (error) {
     return NextResponse.redirect(new URL('/login', origin))
+  }
+
+  // Send welcome email for new users only
+  const user = data?.user
+  if (user?.email && user.created_at) {
+    const createdAt = new Date(user.created_at).getTime()
+    const now = Date.now()
+    const isNewUser = now - createdAt < 30000 // within 30 seconds of signup
+    if (isNewUser) {
+      fetch(`${origin}/api/welcome`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: user.email, name: user.user_metadata?.full_name }),
+      }).catch(() => {}) // fire and forget
+    }
   }
 
   return response
