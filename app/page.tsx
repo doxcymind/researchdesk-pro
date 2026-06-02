@@ -37,7 +37,7 @@ export default function HomePage() {
   }
 
   /* typewriter for headline suffix */
-  const words = ['Science', 'Discovery', 'Publication', 'Research']
+  const words = ['Publication', 'Research', 'Case Report', 'Review Article', 'Meta-Analysis', 'Clinical Study']
   const [wordIdx, setWordIdx] = useState(0)
   const [displayed, setDisplayed] = useState('')
   const [deleting, setDeleting] = useState(false)
@@ -246,6 +246,14 @@ export default function HomePage() {
                 fontSize: 13, cursor: 'pointer', letterSpacing: '0.02em', textDecoration: 'none' }}>{item.label}</a>
             ))}
             <Link href="/login" style={{
+              fontFamily: inter, fontSize: 13, color: 'rgba(200,175,120,0.55)',
+              textDecoration: 'none', letterSpacing: '0.02em', transition: 'color 0.2s',
+            }}
+              onMouseEnter={e => (e.currentTarget.style.color = 'rgba(200,175,120,0.9)')}
+              onMouseLeave={e => (e.currentTarget.style.color = 'rgba(200,175,120,0.55)')}>
+              Login
+            </Link>
+            <Link href="/login" style={{
               display: 'inline-flex', alignItems: 'center',
               background: 'linear-gradient(135deg, #e0b545 0%, #a06808 100%)',
               color: '#0a0600', padding: '9px 22px', borderRadius: 8,
@@ -256,7 +264,7 @@ export default function HomePage() {
             }}
               onMouseEnter={e => { e.currentTarget.style.transform='translateY(-2px)'; e.currentTarget.style.boxShadow='0 8px 28px rgba(180,120,8,0.6)'; }}
               onMouseLeave={e => { e.currentTarget.style.transform=''; e.currentTarget.style.boxShadow='0 4px 20px rgba(180,120,8,0.4)'; }}>
-              Login
+              Sign Up Free
             </Link>
           </div>
         </nav>
@@ -268,14 +276,14 @@ export default function HomePage() {
 
             {/* Eyebrow badge */}
             <div className="fade-up-1 badge-glow" style={{ display: 'inline-flex', alignItems: 'center', gap: 10,
-              marginBottom: 34, padding: '8px 22px', borderRadius: 40,
-              border: '1px solid rgba(201,148,58,0.4)',
-              background: 'linear-gradient(90deg, rgba(201,148,58,0.1) 0%, rgba(201,148,58,0.04) 100%)',
-              color: '#d4a84b', fontSize: 10.5, fontWeight: 700, letterSpacing: '0.2em',
-              textTransform: 'uppercase', fontFamily: cinzel, backdropFilter: 'blur(12px)',
-              boxShadow: 'inset 0 1px 0 rgba(255,220,100,0.1)' }}>
+              marginBottom: 34, padding: '9px 22px', borderRadius: 40,
+              border: '1px solid rgba(201,148,58,0.7)',
+              background: 'linear-gradient(90deg, rgba(201,148,58,0.15) 0%, rgba(201,148,58,0.07) 100%)',
+              color: '#f0c96a', fontSize: 12.5, fontWeight: 600, letterSpacing: '0.04em',
+              fontFamily: inter, backdropFilter: 'blur(12px)',
+              boxShadow: '0 0 16px rgba(201,148,58,0.2), inset 0 1px 0 rgba(255,220,100,0.15)' }}>
               <span style={{ fontSize: 13 }}>✦</span>
-              Built for the Next Generation of Research
+              PubMed · Semantic Scholar · Europe PMC · Clinical Trials — built in
               <span style={{ fontSize: 13 }}>✦</span>
             </div>
 
@@ -283,11 +291,9 @@ export default function HomePage() {
             <h1 className="fade-up-2" style={{ fontFamily: cinzel, fontWeight: 700, lineHeight: 1.08,
               marginBottom: 0, fontSize: 'clamp(3.2rem,5vw,5rem)', letterSpacing: '0.015em',
               color: '#f5eedd', textShadow: '0 2px 40px rgba(201,148,58,0.15)' }}>
-              <span className="headline-word">The</span>{' '}
-              <span className="headline-word">Operating</span><br/>
-              <span className="headline-word">System</span>{' '}for{' '}
-              <span className="text-fluid">Medical</span>
-              <br/>
+              <span className="headline-word">The Smartest Way</span><br/>
+              <span className="headline-word">to Write</span>{' '}
+              <span className="text-fluid">Medical</span><br/>
               <span style={{ position: 'relative', display: 'inline-block' }}>
                 <span className="text-fluid">{displayed}</span>
                 <span style={{
@@ -300,7 +306,7 @@ export default function HomePage() {
             </h1>
 
             {/* Ornamental rule */}
-            <div className="fade-up-3" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '26px 0' }}>
+            <div className="fade-up-3" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
               <div style={{ height: 1, width: 20, background: 'rgba(201,148,58,0.4)' }}/>
               <div style={{ height: 1, width: 40, background: 'rgba(201,148,58,0.7)' }}/>
               <svg width="14" height="14" viewBox="0 0 10 10" fill="#c9943a">
@@ -311,19 +317,23 @@ export default function HomePage() {
             </div>
 
             {/* Sub-copy */}
-            <p className="fade-up-3" style={{ fontFamily: playfair, fontStyle: 'italic',
-              fontSize: '1.08rem', color: 'rgba(180,150,100,0.8)', marginBottom: 14, lineHeight: 1.65 }}>
-              From Idea → Manuscript → Publication
-            </p>
-            <p className="fade-up-3" style={{ color: 'rgba(115,90,58,0.9)', fontSize: '0.87rem',
-              lineHeight: 2.0, marginBottom: 38, maxWidth: 400 }}>
-              Stop juggling Word, Zotero, ChatGPT, PubMed and Excel.<br/>
-              Build, review and publish research inside one intelligent workspace.
-            </p>
+            <div className="fade-up-3" style={{ marginBottom: 38, maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 500, lineHeight: 1.6, color: 'rgba(210,185,140,0.9)', fontFamily: inter }}>
+                ✕&nbsp; No more juggling{' '}
+                <span style={{color:'#c9943a'}}>Word</span>,{' '}
+                <span style={{color:'#c9943a'}}>Zotero</span>,{' '}
+                <span style={{color:'#c9943a'}}>ChatGPT</span>,{' '}
+                <span style={{color:'#c9943a'}}>PubMed</span>{' '}&amp;{' '}
+                <span style={{color:'#c9943a'}}>Excel</span>.
+              </div>
+              <div style={{ fontSize: '0.95rem', fontWeight: 500, lineHeight: 1.6, color: 'rgba(210,185,140,0.9)', fontFamily: inter }}>
+                ✕&nbsp; Write, review, cite and submit — in one place.
+              </div>
+            </div>
 
             {/* CTA */}
             <div className="fade-up-4">
-              <Link href="/login" style={{
+              <Link href="/login" className="hero-cta-btn" style={{
                 display: 'inline-flex', alignItems: 'center', gap: 11,
                 background: 'linear-gradient(135deg, #e0b545 0%, #a06808 100%)',
                 color: '#0a0600', padding: '15px 34px', borderRadius: 12,
@@ -338,23 +348,6 @@ export default function HomePage() {
               </Link>
             </div>
 
-            {/* Trust stats — animated counters */}
-            <div ref={statsRef} className="fade-up-5" style={{ display: 'flex', alignItems: 'center', gap: 0,
-              marginTop: 44, paddingTop: 28, borderTop: '1px solid rgba(201,148,58,0.1)' }}>
-              {[
-                { val: statsVisible ? `${c1}+` : '0+',    label: 'Researchers' },
-                { val: statsVisible ? `${(c2/1000).toFixed(0)}K+` : '0K+', label: 'Papers Written' },
-                { val: statsVisible ? `${c3}%` : '0%',   label: 'Satisfaction' },
-              ].map((s, i) => (
-                <div key={s.label} style={{ flex: 1, paddingRight: i<2 ? 20 : 0,
-                  borderRight: i<2 ? '1px solid rgba(201,148,58,0.1)' : 'none',
-                  paddingLeft: i>0 ? 20 : 0 }}>
-                  <div style={{ fontFamily: cinzel, fontSize: '1.2rem', fontWeight: 700,
-                    color: '#c9943a', lineHeight: 1, transition: 'all 0.1s' }}>{s.val}</div>
-                  <div style={{ fontSize: 10.5, color: 'rgba(120,95,58,0.7)', letterSpacing: '0.06em', marginTop: 4 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
 
           </div>
 
@@ -438,10 +431,23 @@ export default function HomePage() {
                   >{pill}</div>
                 )))}
               </div>
+
+              <div style={{ textAlign: 'center', marginTop: 16 }}>
+                <Link href="/login" style={{
+                  fontFamily: inter, fontSize: 12, fontWeight: 600,
+                  color: 'rgba(201,148,58,0.75)', textDecoration: 'none',
+                  letterSpacing: '0.03em', transition: 'color 0.2s',
+                }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.color='#c9943a'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.color='rgba(201,148,58,0.75)'}
+                >
+                  Explore the workspace →
+                </Link>
+              </div>
             </div>
 
             {/* ── Feature Cards — 3-D tilt ── */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+            <div className="hero-feature-cards" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
               {[
                 { icon: '✦', title: 'AI Reviewer',   desc: 'Instant section-by-section feedback', color: '#c9943a', glow: 'rgba(201,148,58,0.18)', delay: '0s' },
                 { icon: '📎', title: 'Citations',     desc: 'Auto-generate bibliographies',         color: '#a78bfa', glow: 'rgba(167,139,250,0.15)', delay: '0.5s' },

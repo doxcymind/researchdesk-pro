@@ -273,7 +273,7 @@ export default function ProjectsPage() {
                       </span>
                     </div>
 
-                    <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f0e8d0', margin: '0 0 6px', lineHeight: 1.4, textTransform: 'capitalize' }}>{project.title}</h2>
+                    <h2 style={{ fontSize: 15, fontWeight: 600, color: '#f0e8d0', margin: '0 0 6px', lineHeight: 1.4 }}>{project.title.charAt(0).toUpperCase() + project.title.slice(1)}</h2>
 
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 14, paddingTop: 12, borderTop: '1px solid rgba(255,255,255,0.05)' }}>
                       <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>

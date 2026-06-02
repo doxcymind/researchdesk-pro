@@ -86,7 +86,8 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
       // Strip subtitle after dash/colon, then take first 8 words for a focused PubMed query
       const mainTitle = projectTitle.split(/\s*[-:]\s*/)[0].trim()
       const shortQ = mainTitle.split(/\s+/).slice(0, 8).join(' ')
-      setLitQuery(shortQ)
+      const displayQ = shortQ.charAt(0).toUpperCase() + shortQ.slice(1)
+      setLitQuery(displayQ)
       fetchLiterature(shortQ)
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -327,7 +328,7 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
             <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <div>
                 <p style={{ fontSize: 10, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 2px', fontWeight: 700 }}>✦ Suggested Literature</p>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>PubMed Articles</h3>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>PubMed · Semantic Scholar · Europe PMC</h3>
               </div>
               <span style={{ fontSize: 11, color: litLoading ? '#c9943a' : 'rgba(240,232,208,0.2)', whiteSpace: 'nowrap', flexShrink: 0 }}>
                 {litLoading ? 'Searching…' : litArticles.length > 0 ? `${litArticles.length} found` : ''}

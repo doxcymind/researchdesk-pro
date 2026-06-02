@@ -65,7 +65,7 @@ export default function SharePage() {
         {/* Title */}
         <div style={{ marginBottom: 32 }}>
           <span style={{ fontSize: 10, color: 'rgba(201,148,58,0.5)', letterSpacing: '0.2em', textTransform: 'uppercase', fontFamily: cinzel }}>✦ Shared Manuscript</span>
-          <h1 style={{ fontSize: 'clamp(22px,4vw,36px)', fontWeight: 600, color: '#f0e8d0', margin: '8px 0 6px', fontFamily: cinzel, lineHeight: 1.2 }}>{project.title}</h1>
+          <h1 style={{ fontSize: 'clamp(22px,4vw,36px)', fontWeight: 600, color: '#f0e8d0', margin: '8px 0 6px', fontFamily: cinzel, lineHeight: 1.2 }}>{project.title.charAt(0).toUpperCase() + project.title.slice(1)}</h1>
           <span style={{ fontSize: 12, color: '#34d399', padding: '3px 12px', borderRadius: 20, background: 'rgba(52,211,153,0.1)', border: '1px solid rgba(52,211,153,0.2)' }}>{project.study_type}</span>
         </div>
 

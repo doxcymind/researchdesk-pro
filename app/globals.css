@@ -303,13 +303,28 @@ h3 {
 
   /* ── Badge: fix text wrap ── */
   .badge-glow {
-    font-size: 9px !important;
-    letter-spacing: 0.1em !important;
-    padding: 6px 14px !important;
+    font-size: 10px !important;
+    letter-spacing: 0.03em !important;
+    padding: 7px 14px !important;
+    white-space: normal !important;
+    text-align: center !important;
   }
 
   /* ── Headline ── */
-  .hero-section h1 { font-size: 2.6rem !important; }
+  .hero-section h1 { font-size: clamp(2.2rem, 9vw, 3rem) !important; line-height: 1.1 !important; }
+
+  /* ── CTA button full width on mobile ── */
+  .hero-cta-btn { width: 100% !important; justify-content: center !important; }
+
+  /* ── Feature cards: 1 column ── */
+  .hero-feature-cards { grid-template-columns: 1fr !important; }
+
+  /* ── Journey widget: tighter ── */
+  .journey-card { padding: 16px !important; }
+  .journey-pill { font-size: 8px !important; padding: 4px 6px !important; }
+
+  /* ── Sub-copy ── */
+  .hero-left p, .hero-left div { max-width: 100% !important; }
 
   /* ── Grids → single column ── */
   .grid-3, .grid-2 { grid-template-columns: 1fr !important; gap: 14px !important; }

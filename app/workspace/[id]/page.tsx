@@ -33,6 +33,8 @@ interface Project {
   target_journal: string | null
 }
 
+const toSentenceCase = (str: string) => str ? str.charAt(0).toUpperCase() + str.slice(1) : str
+
 export default function WorkspacePage() {
   const params = useParams()
   const router = useRouter()
@@ -457,7 +459,7 @@ export default function WorkspacePage() {
         ) : (
           <>
             <WorkspaceHeader
-              title={project.title}
+              title={toSentenceCase(project.title)}
               studyType={project.study_type}
               onExport={exportManuscript}
               onShare={shareManuscript}
@@ -466,7 +468,7 @@ export default function WorkspacePage() {
 
             <div style={{ padding: '4px 0', minHeight: 500 }}>
               {selectedSection === 'Overview' && (
-                <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} onNavigate={setSelectedSection} projectTitle={project.title} />
+                <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} onNavigate={setSelectedSection} projectTitle={toSentenceCase(project.title)} />
               )}
 
               {isEditorSection && (
@@ -486,7 +488,7 @@ export default function WorkspacePage() {
               )}
 
               {selectedSection === 'Uploads' && (
-                <UploadsPanel projectId={project.id} projectTitle={project.title} studyType={project.study_type} />
+                <UploadsPanel projectId={project.id} projectTitle={toSentenceCase(project.title)} studyType={project.study_type} />
               )}
 
               {selectedSection === 'References' && (
@@ -507,13 +509,13 @@ export default function WorkspacePage() {
               )}
 
               {selectedSection === 'Submission Tracker' && (
-                <RejectionTracker projectId={project.id} projectTitle={project.title} />
+                <RejectionTracker projectId={project.id} projectTitle={toSentenceCase(project.title)} />
               )}
 
               {selectedSection === 'Cover Letter' && (
                 <CoverLetterPanel
                   projectId={project.id}
-                  projectTitle={project.title}
+                  projectTitle={toSentenceCase(project.title)}
                   studyType={project.study_type}
                 />
               )}
@@ -521,7 +523,7 @@ export default function WorkspacePage() {
               {selectedSection === 'AI Assistant' && (
                 isScholar ? (
                   <AIAssistantPanel
-                    projectTitle={project.title}
+                    projectTitle={toSentenceCase(project.title)}
                     studyType={project.study_type}
                     projectId={project.id}
                   />
@@ -540,7 +542,7 @@ export default function WorkspacePage() {
               {selectedSection === 'Clinical Trials' && (
                 <ClinicalTrialsPanel
                   projectId={project.id}
-                  projectTitle={project.title}
+                  projectTitle={toSentenceCase(project.title)}
                   studyType={project.study_type}
                 />
               )}
@@ -552,7 +554,7 @@ export default function WorkspacePage() {
               {selectedSection === 'Literature Search' && (
                 <LiteratureSearch
                   projectId={project.id}
-                  projectTitle={project.title}
+                  projectTitle={toSentenceCase(project.title)}
                   studyType={project.study_type}
                 />
               )}

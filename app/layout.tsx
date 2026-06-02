@@ -26,7 +26,7 @@ export const metadata: Metadata = {
   description: "AI-assisted tools for writing, reviewing, and publishing medical research. From Idea to Manuscript to Publication.",
   icons: { icon: '/logo.webp', apple: '/logo.webp' },
   openGraph: {
-    title: "ResearchDesk — The Operating System for Medical Research",
+    title: "ResearchDesk — The Smartest Way to Write Medical Research",
     description: "AI-assisted tools for writing, reviewing, and publishing medical research.",
     siteName: "ResearchDesk",
     type: "website",

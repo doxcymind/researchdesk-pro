@@ -159,8 +159,8 @@ export default function DynamicDashboard({ projects }: { projects: any[] }) {
                     onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
                   >
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 7 }}>
-                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0', textTransform: 'capitalize' }}>
-                        <span style={{ color, marginRight: 7, fontSize: 11 }}>◎</span>{p.title}
+                      <span style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0' }}>
+                        <span style={{ color, marginRight: 7, fontSize: 11 }}>◎</span>{p.title.charAt(0).toUpperCase() + p.title.slice(1)}
                       </span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                         <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>{p.written}/{p.total} sections</span>
@@ -223,7 +223,7 @@ export default function DynamicDashboard({ projects }: { projects: any[] }) {
             <>
               <div>
                 <p style={{ fontSize: 14, fontWeight: 600, color: '#f0e8d0', margin: '0 0 4px' }}>{recent.action}</p>
-                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0, textTransform: 'capitalize' }}>{recent.projectTitle}</p>
+                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>{recent.projectTitle ? recent.projectTitle.charAt(0).toUpperCase() + recent.projectTitle.slice(1) : ''}</p>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
                 <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.2)' }}>{relTime(recent.createdAt)}</span>
