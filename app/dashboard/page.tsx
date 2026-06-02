@@ -199,9 +199,6 @@ export default function DashboardPage() {
             borderRadius: 24, overflow: 'hidden',
             background: 'linear-gradient(135deg, rgba(201,148,58,0.08) 0%, rgba(5,8,15,0.95) 50%, rgba(167,139,250,0.05) 100%)',
           }}>
-            {/* animated shimmer line */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #c9943a, rgba(167,139,250,0.8), transparent)', animation: 'shimmerLine 4s ease-in-out infinite' }} />
-
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
               <div>
 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
