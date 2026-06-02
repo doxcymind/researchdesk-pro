@@ -3,11 +3,13 @@
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/api-fetch'
+import SubmissionChecklist from './SubmissionChecklist'
 
 interface Props {
   projectId: number
   currentJournal: string | null
   studyType: string
+  onNavigate?: (section: string) => void
 }
 
 interface Journal {
@@ -22,6 +24,62 @@ interface Journal {
   // for featured
   notes?: string
   wordLimit?: number
+}
+
+/* ── Author Guidelines per journal ──────────────────────────── */
+interface JournalGuidelines {
+  wordLimit: number
+  abstractLimit: number
+  referenceLimit: number
+  figures: string
+  fee: string
+  requiredSections: string[]
+  turnaround: string
+  format: string
+  specialNotes: string
+}
+
+const JOURNAL_GUIDELINES: Record<string, JournalGuidelines> = {
+  'BMJ Case Reports': {
+    wordLimit: 3000, abstractLimit: 150, referenceLimit: 30, figures: 'Up to 5 figures/tables. TIFF/EPS ≥300 dpi.',
+    fee: '£1,770 APC (waiver available)', requiredSections: ['Abstract (Background, Case Presentation, Conclusion)', 'Introduction', 'Case Presentation', 'Discussion', 'Patient Perspective', 'Learning Points'],
+    turnaround: '4–6 weeks', format: 'Vancouver', specialNotes: 'Patient consent form mandatory. Ethics statement required. Learning points section (3 bullet points) required.',
+  },
+  'Cureus': {
+    wordLimit: 4000, abstractLimit: 250, referenceLimit: 50, figures: 'Unlimited. PNG/JPEG ≥300 dpi.',
+    fee: '$150–$500 APC (tiered peer review)', requiredSections: ['Abstract', 'Introduction', 'Case Presentation / Methods', 'Results / Discussion', 'Conclusions'],
+    turnaround: '1–3 weeks', format: 'AMA', specialNotes: 'Uses Scholarly Impact Quotient (SIQ). Good for first-time authors. Open-access only.',
+  },
+  'PLOS ONE': {
+    wordLimit: 5000, abstractLimit: 300, referenceLimit: 100, figures: 'Up to 15. TIFF/EPS ≥300 dpi.',
+    fee: '$1,955 APC', requiredSections: ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'Supporting Information'],
+    turnaround: '5–8 weeks', format: 'Vancouver', specialNotes: 'Data availability statement mandatory. Judges scientific soundness only, not perceived impact.',
+  },
+  'BMJ Open': {
+    wordLimit: 4000, abstractLimit: 300, referenceLimit: 60, figures: 'Up to 8. TIFF/EPS ≥300 dpi.',
+    fee: '£2,000 APC', requiredSections: ['Abstract (Objectives, Design, Setting, Participants, Outcome Measures, Results, Conclusions)', 'Introduction', 'Methods', 'Results', 'Discussion', 'Conclusion'],
+    turnaround: '4–8 weeks', format: 'Vancouver', specialNotes: 'CONSORT/STROBE checklist required. Structured abstract mandatory.',
+  },
+  'JAMA': {
+    wordLimit: 3000, abstractLimit: 350, referenceLimit: 40, figures: 'Up to 6. EPS/TIFF ≥300 dpi.',
+    fee: 'No APC (subscription)', requiredSections: ['Structured Abstract (Importance, Objective, Design, Setting, Participants, Interventions, Main Outcomes, Results, Conclusions)', 'Introduction', 'Methods', 'Results', 'Discussion'],
+    turnaround: '4–6 weeks (if not rejected immediately)', format: 'AMA', specialNotes: 'Rejection rate >90%. Must have a clear clinical practice implication. Statistical analysis plan required.',
+  },
+  'NEJM': {
+    wordLimit: 3000, abstractLimit: 200, referenceLimit: 40, figures: 'Up to 6.',
+    fee: 'No APC (subscription)', requiredSections: ['Abstract (unstructured)', 'Introduction', 'Methods', 'Results', 'Discussion'],
+    turnaround: '2–4 weeks', format: 'Vancouver', specialNotes: 'Rejection rate >90%. All authors must disclose conflicts. Statistical review required for clinical trials.',
+  },
+  'Journal of Medical Case Reports': {
+    wordLimit: 3500, abstractLimit: 200, referenceLimit: 30, figures: 'Up to 5.',
+    fee: '£1,690 APC', requiredSections: ['Abstract (Introduction, Case Presentation, Conclusion)', 'Introduction', 'Case Presentation', 'Discussion', 'Conclusions'],
+    turnaround: '4–8 weeks', format: 'Vancouver', specialNotes: 'Patient consent mandatory. CARE checklist required.',
+  },
+  'American Journal of Case Reports': {
+    wordLimit: 3000, abstractLimit: 200, referenceLimit: 30, figures: 'Up to 5.',
+    fee: '$350 APC', requiredSections: ['Abstract', 'Background', 'Case Report', 'Discussion', 'Conclusions'],
+    turnaround: '4–6 weeks', format: 'Vancouver', specialNotes: 'CARE checklist recommended. Broad medical scope.',
+  },
 }
 
 /* ── Featured hardcoded journals per study type ──────────────── */
@@ -115,7 +173,7 @@ function JournalCard({ journal, selected, onSelect, showTypes }: {
   )
 }
 
-export default function JournalSelector({ projectId, currentJournal, studyType }: Props) {
+export default function JournalSelector({ projectId, currentJournal, studyType, onNavigate }: Props) {
   const [selected, setSelected] = useState<string | null>(currentJournal)
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
@@ -123,6 +181,9 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
   const [searching, setSearching] = useState(false)
   const [searchResults, setSearchResults] = useState<Journal[]>([])
   const [searchError, setSearchError] = useState('')
+  const [showGuidelines, setShowGuidelines] = useState(false)
+  const [showPopup, setShowPopup] = useState(false)
+  const [popupJournal, setPopupJournal] = useState('')
   const debounceRef = useRef<NodeJS.Timeout | null>(null)
 
   const recommended = FEATURED.filter(j => (STUDY_TYPE_MAP[studyType] || []).includes(j.name))
@@ -148,15 +209,77 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
     setSaving(true); setSelected(journalName)
     const { data: { session } } = await supabase.auth.getSession()
     const user = session?.user
-    if (user) await supabase.from('projects').update({ target_journal: journalName }).eq('id', projectId).eq('user_id', user.id)
+    if (user) {
+      // Save to projects table (if column exists)
+      await supabase.from('projects').update({ target_journal: journalName }).eq('id', projectId).eq('user_id', user.id)
+      // Also save to project_sections as guaranteed fallback
+      await supabase.from('project_sections').upsert(
+        { project_id: projectId, user_id: user.id, section: '__target_journal__', content: journalName },
+        { onConflict: 'project_id,user_id,section' }
+      )
+    }
     setSaving(false); setSaved(true)
+    setPopupJournal(journalName)
+    setShowPopup(true)
     setTimeout(() => setSaved(false), 2500)
   }
 
   const selectedMeta = [...FEATURED, ...searchResults].find(j => j.name === selected)
+  const selectedGuidelines = selected ? JOURNAL_GUIDELINES[selected] ?? null : null
+
+  const popupMeta = JOURNAL_GUIDELINES[popupJournal] ?? null
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
+
+      {/* Journal customisation popup */}
+      {showPopup && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(5,8,15,0.75)', backdropFilter: 'blur(6px)' }}
+          onClick={() => setShowPopup(false)}>
+          <div onClick={e => e.stopPropagation()}
+            style={{ width: 'min(480px, 90vw)', background: 'linear-gradient(160deg,#0e1525,#080c18)', border: '1px solid rgba(52,211,153,0.35)', borderRadius: 20, padding: '32px 28px', boxShadow: '0 32px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(52,211,153,0.08)' }}>
+
+            {/* Icon + headline */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', marginBottom: 24 }}>
+              <div style={{ width: 52, height: 52, borderRadius: '50%', background: 'rgba(52,211,153,0.12)', border: '1px solid rgba(52,211,153,0.3)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, marginBottom: 14 }}>✦</div>
+              <h3 style={{ fontSize: 18, fontWeight: 700, color: '#34d399', margin: '0 0 8px', fontFamily: "var(--font-cinzel),'Cormorant Garamond',Georgia,serif" }}>Manuscript Customised</h3>
+              <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.55)', margin: 0, lineHeight: 1.6 }}>
+                Your workspace has been restructured to match the submission requirements of
+              </p>
+              <p style={{ fontSize: 15, fontWeight: 700, color: '#e8c878', margin: '6px 0 0' }}>{popupJournal}</p>
+            </div>
+
+            {/* What changed */}
+            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 12, padding: '16px 18px', marginBottom: 20 }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(201,148,58,0.6)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 12px' }}>What changed</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                {[
+                  { icon: '◈', label: 'Manuscript sections', detail: popupMeta ? `${popupMeta.requiredSections.length} required sections applied` : 'Updated to journal format' },
+                  { icon: '⬡', label: 'Word limits', detail: popupMeta ? `${popupMeta.wordLimit.toLocaleString()} words total · Abstract ≤ ${popupMeta.abstractLimit}` : 'Per-section limits applied' },
+                  { icon: '📎', label: 'References', detail: popupMeta ? `≤ ${popupMeta.referenceLimit} references · ${popupMeta.format} format` : 'Citation format updated' },
+                ].map(item => (
+                  <div key={item.label} style={{ display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                    <span style={{ fontSize: 13, width: 18, textAlign: 'center', flexShrink: 0, opacity: 0.6, marginTop: 1 }}>{item.icon}</span>
+                    <div>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: '#f0e8d0' }}>{item.label}</span>
+                      <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.4)', marginLeft: 6 }}>{item.detail}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', textAlign: 'center', margin: '0 0 18px', lineHeight: 1.6 }}>
+              Your existing content is preserved. Only the section structure and limits have been updated.
+            </p>
+
+            <button onClick={() => setShowPopup(false)}
+              style={{ width: '100%', padding: '12px', borderRadius: 10, background: 'linear-gradient(135deg,rgba(52,211,153,0.2),rgba(52,211,153,0.1))', border: '1px solid rgba(52,211,153,0.3)', color: '#34d399', fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+              Got it — let&apos;s write
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -174,6 +297,7 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <span style={{ fontSize: 10, fontWeight: 700, color: '#c9943a', letterSpacing: '0.1em' }}>TARGET JOURNAL</span>
           </div>
+
           <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 }}>
             <div>
               <p style={{ fontSize: 15, fontWeight: 700, color: '#e8c878', margin: '0 0 6px' }}>{selectedMeta.name}</p>
@@ -188,6 +312,56 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
               Clear
             </button>
           </div>
+          {/* Author Guidelines toggle */}
+          {selectedGuidelines && (
+            <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid rgba(201,148,58,0.12)' }}>
+              <button
+                onClick={() => setShowGuidelines(g => !g)}
+                style={{ display: 'flex', alignItems: 'center', gap: 6, background: 'none', border: 'none', cursor: 'pointer', padding: 0, color: 'rgba(240,232,208,0.5)', fontSize: 12, fontWeight: 600, fontFamily: 'inherit' }}
+              >
+                <span style={{ fontSize: 11, color: '#c9943a' }}>📋</span>
+                Author Guidelines for {selectedMeta.name}
+                <span style={{ fontSize: 10, color: 'rgba(240,232,208,0.3)', marginLeft: 2 }}>{showGuidelines ? '▲' : '▼'}</span>
+              </button>
+
+              {showGuidelines && (
+                <div style={{ marginTop: 12, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                  {/* Stats row */}
+                  {[
+                    { label: 'Word Limit', value: `${selectedGuidelines.wordLimit.toLocaleString()} words` },
+                    { label: 'Abstract', value: `≤ ${selectedGuidelines.abstractLimit} words` },
+                    { label: 'References', value: `≤ ${selectedGuidelines.referenceLimit}` },
+                    { label: 'Turnaround', value: selectedGuidelines.turnaround },
+                    { label: 'Citation Format', value: selectedGuidelines.format },
+                    { label: 'Figures', value: selectedGuidelines.figures },
+                    { label: 'Publication Fee', value: selectedGuidelines.fee },
+                  ].map(item => (
+                    <div key={item.label} style={{ background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '8px 12px' }}>
+                      <p style={{ fontSize: 10, color: 'rgba(240,232,208,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 3px', fontWeight: 600 }}>{item.label}</p>
+                      <p style={{ fontSize: 12, color: '#f0e8d0', margin: 0, fontWeight: 500 }}>{item.value}</p>
+                    </div>
+                  ))}
+
+                  {/* Required sections */}
+                  <div style={{ gridColumn: '1 / -1', background: 'rgba(255,255,255,0.03)', borderRadius: 8, padding: '10px 12px' }}>
+                    <p style={{ fontSize: 10, color: 'rgba(240,232,208,0.35)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 8px', fontWeight: 600 }}>Required Sections</p>
+                    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                      {selectedGuidelines.requiredSections.map(sec => (
+                        <span key={sec} style={{ fontSize: 11, color: 'rgba(240,232,208,0.6)', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', padding: '3px 9px', borderRadius: 6 }}>{sec}</span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Special notes */}
+                  <div style={{ gridColumn: '1 / -1', background: 'rgba(201,148,58,0.05)', border: '1px solid rgba(201,148,58,0.15)', borderRadius: 8, padding: '10px 12px' }}>
+                    <p style={{ fontSize: 10, color: 'rgba(201,148,58,0.6)', textTransform: 'uppercase', letterSpacing: '0.08em', margin: '0 0 5px', fontWeight: 600 }}>⚠ Special Requirements</p>
+                    <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.5)', margin: 0, lineHeight: 1.6 }}>{selectedGuidelines.specialNotes}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       )}
 
@@ -252,6 +426,24 @@ export default function JournalSelector({ projectId, currentJournal, studyType }
           {others.map(j => (
             <JournalCard key={j.name} journal={j} selected={selected === j.name} onSelect={() => saveJournal(j.name)} />
           ))}
+        </div>
+      )}
+
+      {/* ── Submission Checklist (inline, appears after journal selected) ── */}
+      {selected && (
+        <div style={{ borderTop: '1px solid rgba(201,148,58,0.15)', paddingTop: 32, marginTop: 8 }}>
+          <div style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 11, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 5px', fontWeight: 700 }}>✦ Step 2</p>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#f0e8d0', margin: '0 0 4px', letterSpacing: '-0.3px' }}>Submission Checklist</h3>
+            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>
+              Tailored checklist for <span style={{ color: '#c9943a' }}>{selected}</span> — tick items off as you prepare your manuscript.
+            </p>
+          </div>
+          <SubmissionChecklist
+            projectId={projectId}
+            targetJournal={selected}
+            studyType={studyType}
+          />
         </div>
       )}
 

@@ -23,6 +23,8 @@ export default function AuthorsPanel({ projectId }: { projectId: number }) {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [orcidLoading, setOrcidLoading] = useState<string | null>(null)
+  const [creditStatement, setCreditStatement] = useState('')
+  const [generatingCredit, setGeneratingCredit] = useState(false)
 
   useEffect(() => {
     const load = async () => {
@@ -132,6 +134,30 @@ export default function AuthorsPanel({ projectId }: { projectId: number }) {
       setAuthors(prev => prev.map(a => a.id === id ? { ...a, orcid: formatted2 } : a))
     } finally {
       setOrcidLoading(null)
+    }
+  }
+
+  const generateCreditStatement = async () => {
+    if (authors.length === 0 || !authors[0].name) return
+    setGeneratingCredit(true)
+    try {
+      const CREDIT_ROLES = ['Conceptualization', 'Methodology', 'Investigation', 'Resources', 'Data Curation', 'Writing – Original Draft', 'Writing – Review & Editing', 'Visualization', 'Supervision', 'Project Administration']
+      // Auto-assign roles based on author order
+      const lines = authors
+        .filter(a => a.name)
+        .map((a, i) => {
+          const roles: string[] = []
+          if (i === 0) roles.push('Conceptualization', 'Writing – Original Draft')
+          if (i === 0 || i === 1) roles.push('Investigation', 'Data Curation')
+          if (authors.length > 1 && i === authors.length - 1) roles.push('Supervision', 'Project Administration')
+          roles.push('Writing – Review & Editing')
+          const unique = [...new Set(roles)]
+          return `${a.name}: ${unique.join(', ')}.`
+        })
+      const statement = `Author Contributions\n\n${lines.join(' ')}`
+      setCreditStatement(statement)
+    } finally {
+      setGeneratingCredit(false)
     }
   }
 
@@ -245,6 +271,43 @@ export default function AuthorsPanel({ projectId }: { projectId: number }) {
       >
         {saving ? 'Saving…' : saved ? '✓ Authors Saved' : 'Save Authors'}
       </button>
+
+      {/* CRediT Author Contribution Statement */}
+      <div style={{ marginTop: 24, padding: '18px 20px', borderRadius: 14, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+          <div>
+            <p style={{ fontSize: 12, fontWeight: 700, color: 'rgba(201,148,58,0.7)', margin: '0 0 3px' }}>Author Contribution Statement</p>
+            <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>CRediT taxonomy — required by most journals</p>
+          </div>
+          <button
+            onClick={generateCreditStatement}
+            disabled={generatingCredit || authors.filter(a => a.name).length === 0}
+            style={{ padding: '7px 14px', borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit', background: 'rgba(201,148,58,0.1)', border: '1px solid rgba(201,148,58,0.25)', color: '#c9943a', whiteSpace: 'nowrap', opacity: authors.filter(a => a.name).length === 0 ? 0.4 : 1 }}
+          >
+            {generatingCredit ? '…' : creditStatement ? '↻ Regenerate' : '✦ Generate'}
+          </button>
+        </div>
+        {creditStatement ? (
+          <textarea
+            value={creditStatement}
+            onChange={e => setCreditStatement(e.target.value)}
+            rows={5}
+            style={{ width: '100%', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: '10px 12px', color: '#f0e8d0', fontSize: 12, resize: 'vertical', fontFamily: 'inherit', outline: 'none', boxSizing: 'border-box', lineHeight: 1.7 }}
+          />
+        ) : (
+          <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', margin: 0 }}>
+            Save your authors first, then click Generate to create a CRediT statement.
+          </p>
+        )}
+        {creditStatement && (
+          <button
+            onClick={async () => { await navigator.clipboard.writeText(creditStatement) }}
+            style={{ marginTop: 8, padding: '5px 12px', borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,232,208,0.4)' }}
+          >
+            Copy
+          </button>
+        )}
+      </div>
 
       {/* Info note */}
       <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.25)', marginTop: 14, lineHeight: 1.6, textAlign: 'center' }}>

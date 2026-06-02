@@ -5,6 +5,7 @@
       "name": "researchdesk-pro",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
+      "cwd": "/Users/drsparshdixit/Documents/GitHub/researchdesk-pro",
       "port": 3000
     }
   ]

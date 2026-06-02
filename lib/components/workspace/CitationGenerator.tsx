@@ -208,7 +208,7 @@ export default function CitationGenerator({ projectId }: { projectId?: number })
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: 12 }}>
         <div>
-          <h2 style={{ fontSize: 28, fontWeight: 700, color: '#f0e8d0', letterSpacing: '-0.4px', margin: '0 0 4px', fontFamily: cinzel }}>Citation Generator</h2>
+          <h2 style={{ fontSize: 28, fontWeight: 700, color: '#f0e8d0', letterSpacing: '-0.4px', margin: '0 0 4px', fontFamily: cinzel }}>References</h2>
           <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>
             Add references manually or import from Zotero · <strong style={{ color: 'rgba(201,148,58,0.6)' }}>AI-placed on export</strong>
           </p>

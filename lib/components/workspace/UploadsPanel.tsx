@@ -25,8 +25,29 @@ function formatSize(bytes: number) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
 }
 
+// Keywords per category used to auto-match uploaded filenames
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  'Clinical History':  ['history', 'symptom', 'complaint', 'admission', 'clinical', 'hx', 'patient'],
+  'Radiology':         ['ct', 'mri', 'xray', 'x-ray', 'ultrasound', 'scan', 'radio', 'imaging', 'pet', 'ecg', 'echo'],
+  'Histopathology':    ['histo', 'biopsy', 'pathol', 'specimen', 'microscop', 'tissue', 'hpe'],
+  'Laboratory':        ['lab', 'blood', 'cbc', 'serum', 'culture', 'test', 'report', 'result', 'biochem'],
+  'Clinical Images':   ['photo', 'image', 'intraop', 'operative', 'picture', 'figure', 'img'],
+  'Operative Notes':   ['op note', 'opnote', 'operative', 'surgery', 'surgical', 'procedure', 'operation'],
+  'Literature':        ['paper', 'article', 'reference', 'journal', 'pubmed', 'study', 'review'],
+  'Consent & Ethics':  ['consent', 'ethics', 'irb', 'ethical', 'approval'],
+}
+
+function matchCategory(fileName: string): string | null {
+  const lower = fileName.toLowerCase()
+  for (const [cat, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(k => lower.includes(k))) return cat
+  }
+  return null
+}
+
 export default function UploadsPanel({ projectId, projectTitle, studyType }: UploadsPanelProps) {
   const [uploading, setUploading] = useState(false)
+  const [uploadingCategory, setUploadingCategory] = useState<string | null>(null)
   const [dragOver, setDragOver]   = useState(false)
   const [files, setFiles]         = useState<Upload[]>([])
   const [loading, setLoading]     = useState(true)
@@ -35,7 +56,8 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
   const [suggestions, setSuggestions] = useState<{ category: string; label: string }[]>([])
   const [sugLoading, setSugLoading]   = useState(false)
   const [sugFailed, setSugFailed]     = useState(false)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef        = useRef<HTMLInputElement>(null)
+  const categoryRef     = useRef<string | null>(null)
 
   useEffect(() => { fetchFiles() }, [])
 
@@ -82,10 +104,13 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
     setLoading(false)
   }
 
-  const handleFile = async (file: File) => {
+  const handleFile = async (file: File, category?: string) => {
     setPanelError(null)
+    const resolvedCategory = category || categoryRef.current || matchCategory(file.name) || null
+    setUploadingCategory(resolvedCategory)
     if (!file.name.toLowerCase().endsWith('.pdf')) {
       setPanelError('Only PDF files are supported')
+      setUploadingCategory(null)
       return
     }
     if (file.size > MAX_FILE_SIZE) {
@@ -125,6 +150,8 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
       setPanelError('Something went wrong. Please try again.')
     } finally {
       setUploading(false)
+      setUploadingCategory(null)
+      categoryRef.current = null
     }
   }
 
@@ -178,14 +205,14 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
         </p>
       </div>
 
-      {/* AI Upload Suggestions */}
+      {/* Upload Progress Bars */}
       <div style={{ padding: '16px 20px', borderRadius: 14, background: 'rgba(201,148,58,0.04)', border: '1px solid rgba(201,148,58,0.15)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: (sugLoading || suggestions.length > 0 || sugFailed) ? 14 : 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <span style={{ fontSize: 13, fontWeight: 700, color: '#e8b84a' }}>✦ What to upload</span>
-            <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>AI-powered · based on your study type &amp; topic</span>
+            <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)' }}>Click any row to upload · AI-powered</span>
           </div>
-          {sugLoading && <span style={{ fontSize: 11, color: 'rgba(201,148,58,0.4)' }}>Analysing your study…</span>}
+          {sugLoading && <span style={{ fontSize: 11, color: 'rgba(201,148,58,0.4)' }}>Analysing…</span>}
           {!sugLoading && suggestions.length > 0 && (
             <button onClick={fetchSuggestions} style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit' }}>↺ Refresh</button>
           )}
@@ -193,52 +220,95 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
 
         {sugLoading && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {[1,2,3,4].map(i => <div key={i} style={{ height: 40, borderRadius: 10, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite' }} />)}
+            {[1,2,3,4].map(i => <div key={i} style={{ height: 48, borderRadius: 10, background: 'rgba(255,255,255,0.03)', animation: 'pulse 1.5s ease-in-out infinite' }} />)}
           </div>
         )}
 
-        {!sugLoading && suggestions.length > 0 && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {suggestions.map((s, i) => {
-              const icon: Record<string, string> = {
-                'Radiology': '🔬', 'Histopathology': '🧫', 'Laboratory': '🧪',
-                'Clinical History': '📋', 'Clinical Images': '📸', 'Operative Notes': '🔪',
-                'Literature': '📖', 'Consent & Ethics': '📝',
-              }
-              const colorMap: Record<string, string> = {
-                'Radiology': 'rgba(99,179,237,0.12)', 'Histopathology': 'rgba(167,139,250,0.12)',
-                'Laboratory': 'rgba(52,211,153,0.10)', 'Clinical History': 'rgba(201,148,58,0.10)',
-                'Clinical Images': 'rgba(249,115,22,0.10)', 'Operative Notes': 'rgba(248,113,113,0.10)',
-                'Literature': 'rgba(240,232,208,0.06)', 'Consent & Ethics': 'rgba(52,211,153,0.08)',
-              }
-              const borderMap: Record<string, string> = {
-                'Radiology': 'rgba(99,179,237,0.2)', 'Histopathology': 'rgba(167,139,250,0.2)',
-                'Laboratory': 'rgba(52,211,153,0.2)', 'Clinical History': 'rgba(201,148,58,0.2)',
-                'Clinical Images': 'rgba(249,115,22,0.2)', 'Operative Notes': 'rgba(248,113,113,0.2)',
-                'Literature': 'rgba(240,232,208,0.1)', 'Consent & Ethics': 'rgba(52,211,153,0.15)',
-              }
-              const textMap: Record<string, string> = {
-                'Radiology': 'rgba(99,179,237,0.8)', 'Histopathology': 'rgba(167,139,250,0.8)',
-                'Laboratory': 'rgba(52,211,153,0.8)', 'Clinical History': '#e8b84a',
-                'Clinical Images': 'rgba(249,115,22,0.8)', 'Operative Notes': 'rgba(248,113,113,0.8)',
-                'Literature': 'rgba(240,232,208,0.5)', 'Consent & Ethics': 'rgba(52,211,153,0.7)',
-              }
-              const bg     = colorMap[s.category]  || 'rgba(255,255,255,0.03)'
-              const border = borderMap[s.category] || 'rgba(255,255,255,0.08)'
-              const catClr = textMap[s.category]   || 'rgba(240,232,208,0.4)'
-              const emoji  = icon[s.category]      || '📄'
-              return (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px', borderRadius: 11, background: bg, border: `1px solid ${border}` }}>
-                  <span style={{ fontSize: 18, flexShrink: 0 }}>{emoji}</span>
-                  <div style={{ minWidth: 0 }}>
-                    <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: catClr, display: 'block', marginBottom: 2 }}>{s.category}</span>
-                    <span style={{ fontSize: 13, color: 'rgba(240,232,208,0.75)', lineHeight: 1.5 }}>{s.label}</span>
-                  </div>
+        {!sugLoading && suggestions.length > 0 && (() => {
+          const ICON: Record<string, string> = {
+            'Radiology': '🔬', 'Histopathology': '🧫', 'Laboratory': '🧪',
+            'Clinical History': '📋', 'Clinical Images': '📸', 'Operative Notes': '🔪',
+            'Literature': '📖', 'Consent & Ethics': '📝',
+          }
+          const COLOR: Record<string, string> = {
+            'Radiology': '#63b3ed', 'Histopathology': '#a78bfa', 'Laboratory': '#34d399',
+            'Clinical History': '#e8b84a', 'Clinical Images': '#f97316', 'Operative Notes': '#f87171',
+            'Literature': '#d1d5db', 'Consent & Ethics': '#34d399',
+          }
+          const uploadedCategories = new Set(files.map(f => matchCategory(f.file_name)).filter(Boolean))
+          const doneCount = suggestions.filter(s => uploadedCategories.has(s.category)).length
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* Overall progress */}
+              <div style={{ marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
+                  <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.4)' }}>{doneCount} of {suggestions.length} uploaded</span>
+                  <span style={{ fontSize: 11, color: 'rgba(201,148,58,0.6)', fontWeight: 700 }}>{Math.round((doneCount / suggestions.length) * 100)}%</span>
                 </div>
-              )
-            })}
-          </div>
-        )}
+                <div style={{ height: 4, borderRadius: 4, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: 4, background: 'linear-gradient(90deg, #c9943a, #e8b84a)', width: `${(doneCount / suggestions.length) * 100}%`, transition: 'width 0.5s ease' }}/>
+                </div>
+              </div>
+
+              {suggestions.map((s, i) => {
+                const isDone    = uploadedCategories.has(s.category)
+                const isLoading = uploadingCategory === s.category
+                const color     = COLOR[s.category] || '#c9943a'
+                const emoji     = ICON[s.category]  || '📄'
+                const matchedFile = files.find(f => matchCategory(f.file_name) === s.category)
+
+                return (
+                  <div
+                    key={i}
+                    onClick={() => {
+                      if (!isDone && !uploading) {
+                        categoryRef.current = s.category
+                        inputRef.current?.click()
+                      }
+                    }}
+                    style={{
+                      position: 'relative', overflow: 'hidden', borderRadius: 11,
+                      border: `1px solid ${isDone ? `${color}40` : 'rgba(255,255,255,0.07)'}`,
+                      cursor: isDone ? 'default' : uploading ? 'not-allowed' : 'pointer',
+                      transition: 'border-color 0.2s, transform 0.15s',
+                      background: 'rgba(255,255,255,0.02)',
+                    }}
+                    onMouseEnter={e => { if (!isDone && !uploading) { e.currentTarget.style.borderColor = `${color}60`; e.currentTarget.style.transform = 'translateY(-1px)' } }}
+                    onMouseLeave={e => { e.currentTarget.style.borderColor = isDone ? `${color}40` : 'rgba(255,255,255,0.07)'; e.currentTarget.style.transform = '' }}
+                  >
+                    {/* Fill bar background */}
+                    <div style={{
+                      position: 'absolute', inset: 0,
+                      background: isDone ? `${color}18` : 'transparent',
+                      width: isDone ? '100%' : isLoading ? '60%' : '0%',
+                      transition: 'width 0.6s ease, background 0.3s',
+                      borderRadius: 10,
+                    }}/>
+
+                    <div style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 12, padding: '11px 14px' }}>
+                      <span style={{ fontSize: 18, flexShrink: 0 }}>{emoji}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em', color: isDone ? color : 'rgba(240,232,208,0.35)', display: 'block', marginBottom: 2 }}>{s.category}</span>
+                        <span style={{ fontSize: 13, color: isDone ? 'rgba(240,232,208,0.8)' : 'rgba(240,232,208,0.5)', lineHeight: 1.4 }}>
+                          {isLoading ? 'Uploading…' : isDone ? matchedFile?.file_name || s.label : s.label}
+                        </span>
+                      </div>
+                      <div style={{ flexShrink: 0 }}>
+                        {isLoading ? (
+                          <div style={{ width: 16, height: 16, borderRadius: '50%', border: `2px solid ${color}40`, borderTopColor: color, animation: 'spin 0.8s linear infinite' }}/>
+                        ) : isDone ? (
+                          <div style={{ width: 22, height: 22, borderRadius: '50%', background: `${color}20`, border: `1.5px solid ${color}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, color }}>✓</div>
+                        ) : (
+                          <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.2)', padding: '3px 8px', borderRadius: 8, border: '1px solid rgba(255,255,255,0.07)' }}>Upload</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )
+        })()}
 
         {!sugLoading && sugFailed && (
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -279,7 +349,7 @@ export default function UploadsPanel({ projectId, projectTitle, studyType }: Upl
             </div>
           </>
         )}
-        <input ref={inputRef} type="file" accept=".pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }} style={{ display: 'none' }} />
+        <input ref={inputRef} type="file" accept=".pdf" onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f, categoryRef.current || undefined); e.target.value = '' }} style={{ display: 'none' }} />
       </div>
 
       {/* File list */}

@@ -29,6 +29,8 @@ interface Checklist {
 
 interface Props {
   projectId: number
+  targetJournal?: string | null
+  studyType?: string
 }
 
 const POPULAR_JOURNALS = [
@@ -46,9 +48,9 @@ const POPULAR_JOURNALS = [
   'Radiology',
 ]
 
-export default function SubmissionChecklist({ projectId }: Props) {
-  const [journalInput, setJournalInput] = useState('')
-  const [studyType,    setStudyType]    = useState('Original Study')
+export default function SubmissionChecklist({ projectId, targetJournal, studyType: studyTypeProp }: Props) {
+  const [journalInput, setJournalInput] = useState(targetJournal || '')
+  const [studyType,    setStudyType]    = useState(studyTypeProp || 'Original Study')
   const [checklist,    setChecklist]    = useState<Checklist | null>(null)
   const [checked,      setChecked]      = useState<Record<string, boolean>>({})
   const [generating,   setGenerating]   = useState(false)
@@ -56,12 +58,24 @@ export default function SubmissionChecklist({ projectId }: Props) {
   const [suggestions,  setSuggestions]  = useState<string[]>([])
   const [copied,       setCopied]       = useState(false)
 
-  // Load saved state from DB on mount
+  // Load saved state + target_journal directly from DB on mount
   useEffect(() => {
     const load = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       const user = session?.user
       if (!user) return
+
+      // Fetch target journal from project_sections (reliable fallback)
+      const { data: journalRow } = await supabase
+        .from('project_sections')
+        .select('content')
+        .eq('project_id', projectId)
+        .eq('user_id', user.id)
+        .eq('section', '__target_journal__')
+        .single()
+      const savedJournal = journalRow?.content || targetJournal || ''
+      if (savedJournal) setJournalInput(savedJournal)
+
       const { data } = await supabase
         .from('project_sections')
         .select('content')
@@ -74,7 +88,7 @@ export default function SubmissionChecklist({ projectId }: Props) {
           const saved = JSON.parse(data.content)
           setChecklist(saved.checklist)
           setChecked(saved.checked || {})
-          setJournalInput(saved.checklist?.journal || '')
+          if (saved.checklist?.journal) setJournalInput(saved.checklist.journal)
         } catch {}
       }
     }
@@ -102,7 +116,8 @@ export default function SubmissionChecklist({ projectId }: Props) {
   }, [projectId])
 
   const generate = async () => {
-    if (!journalInput.trim()) return
+    const journal = journalInput.trim() || targetJournal || ''
+    if (!journal) return
     setGenerating(true)
     setError('')
     setChecklist(null)
@@ -111,7 +126,7 @@ export default function SubmissionChecklist({ projectId }: Props) {
     try {
       const res = await apiFetch('/api/submission-checklist', {
         method: 'POST',
-        body: JSON.stringify({ journal: journalInput.trim(), studyType }),
+        body: JSON.stringify({ journal, studyType }),
       })
       const data = await res.json()
       if (data.error) { setError(data.error); return }
@@ -176,33 +191,42 @@ export default function SubmissionChecklist({ projectId }: Props) {
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
-          {/* Journal input */}
-          <div>
-            <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(201,148,58,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Journal Name</label>
-            <div style={{ position: 'relative' }}>
-              <input
-                type="text"
-                value={journalInput}
-                onChange={e => filterSuggestions(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter') { setSuggestions([]); generate() } }}
-                placeholder="e.g. New England Journal of Medicine, The Lancet, BMJ…"
-                style={{ width: '100%', padding: '13px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 11, fontSize: 14, color: '#f0e8d0', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
-                onFocus={e => (e.target.style.borderColor = 'rgba(201,148,58,0.45)')}
-                onBlur={e => { setTimeout(() => setSuggestions([]), 200); e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
-              />
-              {/* Autocomplete dropdown */}
-              {suggestions.length > 0 && (
-                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 4, background: '#0d1426', border: '1px solid rgba(201,148,58,0.25)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
-                  {suggestions.map(s => (
-                    <button key={s} onMouseDown={() => { setJournalInput(s); setSuggestions([]) }} style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', color: 'rgba(240,232,208,0.75)', fontSize: 13, cursor: 'pointer', transition: 'background 0.15s', fontFamily: 'inherit' }}
-                      onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,148,58,0.1)')}
-                      onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
-                    >{s}</button>
-                  ))}
-                </div>
-              )}
+          {/* Journal — show pill if pre-selected, otherwise show input */}
+          {targetJournal && !checklist ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: 11, background: 'rgba(201,148,58,0.1)', border: '1px solid rgba(201,148,58,0.35)' }}>
+              <div>
+                <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(201,148,58,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase', margin: '0 0 3px' }}>Target Journal</p>
+                <p style={{ fontSize: 14, fontWeight: 700, color: '#e8c878', margin: 0 }}>{targetJournal}</p>
+              </div>
+              <button onClick={() => setJournalInput('')} style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', background: 'none', border: 'none', cursor: 'pointer' }}>Change</button>
             </div>
-          </div>
+          ) : (
+            <div>
+              <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'rgba(201,148,58,0.7)', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 8 }}>Journal Name</label>
+              <div style={{ position: 'relative' }}>
+                <input
+                  type="text"
+                  value={journalInput}
+                  onChange={e => filterSuggestions(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { setSuggestions([]); generate() } }}
+                  placeholder="e.g. New England Journal of Medicine, The Lancet, BMJ…"
+                  style={{ width: '100%', padding: '13px 16px', background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 11, fontSize: 14, color: '#f0e8d0', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
+                  onFocus={e => (e.target.style.borderColor = 'rgba(201,148,58,0.45)')}
+                  onBlur={e => { setTimeout(() => setSuggestions([]), 200); e.target.style.borderColor = 'rgba(255,255,255,0.12)' }}
+                />
+                {suggestions.length > 0 && (
+                  <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, zIndex: 50, marginTop: 4, background: '#0d1426', border: '1px solid rgba(201,148,58,0.25)', borderRadius: 10, overflow: 'hidden', boxShadow: '0 8px 32px rgba(0,0,0,0.5)' }}>
+                    {suggestions.map(s => (
+                      <button key={s} onMouseDown={() => { setJournalInput(s); setSuggestions([]) }} style={{ width: '100%', padding: '10px 16px', textAlign: 'left', background: 'transparent', border: 'none', color: 'rgba(240,232,208,0.75)', fontSize: 13, cursor: 'pointer', transition: 'background 0.15s', fontFamily: 'inherit' }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,148,58,0.1)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                      >{s}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Study type + button row */}
           <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' }}>

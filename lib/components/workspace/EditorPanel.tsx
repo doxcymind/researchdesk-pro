@@ -27,11 +27,13 @@ interface EditorPanelProps {
   onCloseReview: () => void
   onSave?: () => void
   onKeywordsGenerated?: (keywords: string[]) => void
+  sectionWordLimit?: number  // journal-specific override
 }
 
-const WORD_LIMITS: Record<string, number> = {
+// Fallback limits when no journal is selected
+const DEFAULT_WORD_LIMITS: Record<string, number> = {
   Abstract: 250, Introduction: 500, Methods: 600,
-  Results: 600, Discussion: 800, References: 0,
+  Results: 600, Discussion: 800,
 }
 
 const SECTION_GUIDANCE: Record<string, { what: string; structure: string[]; tip: string }> = {
@@ -45,6 +47,55 @@ const SECTION_GUIDANCE: Record<string, { what: string; structure: string[]; tip:
     structure: ['Start broad — the global/national burden of the problem', 'Narrow down — what is known about this specific topic', 'Identify the gap — what is NOT known or NOT done', 'Your study — how you address that gap and your objective'],
     tip: 'Think of it as a funnel — broad at the top, narrow at the bottom ending with your aim.',
   },
+  'Case Presentation': {
+    what: 'The heart of a case report — a detailed, chronological account of the patient\'s clinical journey.',
+    structure: [
+      'Patient demographics — age, sex, relevant background (no identifying info)',
+      'Chief complaint — why did they present?',
+      'History of presenting illness — symptom onset, duration, progression',
+      'Past medical, surgical, drug, family, social history (relevant only)',
+      'Examination findings — vitals, systemic examination, key positives AND negatives',
+      'Investigations — lab values, imaging findings (describe what you saw, not just "normal")',
+      'Diagnosis — how was the final diagnosis reached?',
+      'Treatment — what was done? Drug names, doses, procedures, timeline',
+      'Outcome — what happened? Discharge, follow-up, recovery',
+    ],
+    tip: 'Write like you are presenting at a grand round. Be precise with numbers — age, values, doses, timelines. Avoid vague words like "elevated" — say the actual value.',
+  },
+  'Case Presentations': {
+    what: 'Present each case clearly and consistently so readers can compare across cases.',
+    structure: [
+      'Number each case (Case 1, Case 2, etc.) with a brief header',
+      'For each: demographics → presentation → investigations → diagnosis → treatment → outcome',
+      'Use a summary table at the end comparing key features across all cases',
+      'Highlight what is similar AND different between cases',
+    ],
+    tip: 'Consistent structure across cases is critical. Readers must be able to scan and compare. Consider a table.',
+  },
+  'Patient Perspective': {
+    what: 'Required by BMJ Case Reports — the patient\'s own voice about their experience. Written in first person or as a direct quote.',
+    structure: [
+      'How the patient felt when first experiencing symptoms',
+      'Their journey to diagnosis — delays, misdiagnoses, emotions',
+      'Their experience of treatment and hospital care',
+      'How they feel now and what they want others to know',
+    ],
+    tip: 'This should genuinely reflect the patient\'s voice. It can be a short paragraph (2–4 sentences) or a few bullet points. Get patient approval before publishing.',
+  },
+  'Learning Points': {
+    what: 'Three concise bullet points summarising what clinicians should take away from your case. Required by BMJ Case Reports.',
+    structure: [
+      '• What is rare/unusual about this case — why it matters',
+      '• Key diagnostic insight or pitfall to avoid',
+      '• Clinical management pearl or treatment takeaway',
+    ],
+    tip: 'Each point should be one sentence, starting with an action word ("Consider...", "Clinicians should...", "This case highlights..."). These are the most-read part of case reports — make them sharp.',
+  },
+  Discussion: {
+    what: 'Interprets your results in the context of existing literature.',
+    structure: ['Open with your key finding (one sentence)', 'Compare with previous studies — agree or disagree?', 'Explain WHY your results are what they are', 'Acknowledge limitations (every study has them — be honest)', 'Clinical/research implications — what does this mean in practice?'],
+    tip: 'The Discussion is where you show your depth of understanding. Don\'t just repeat the Results.',
+  },
   Methods: {
     what: 'Describes exactly how you conducted the study — detailed enough for another researcher to replicate.',
     structure: ['Study design & setting (RCT, cohort, etc. — where & when)', 'Participants (inclusion/exclusion criteria, how recruited)', 'Intervention or exposure (what was done to/by participants)', 'Outcome measures (what you measured and how)', 'Statistical analysis (software, tests used, significance level)', 'Ethics approval (IRB/ethics committee reference number)'],
@@ -55,15 +106,40 @@ const SECTION_GUIDANCE: Record<string, { what: string; structure: string[]; tip:
     structure: ['Participant flow (how many enrolled, excluded, completed)', 'Baseline characteristics (Table 1 — demographics)', 'Primary outcome (your main finding with statistics)', 'Secondary outcomes (additional findings)', 'Any adverse events or unexpected findings'],
     tip: 'Results section = data only. Save your interpretation for the Discussion.',
   },
-  Discussion: {
-    what: 'Interprets your results in the context of existing literature.',
-    structure: ['Open with your key finding (one sentence)', 'Compare with previous studies — agree or disagree?', 'Explain WHY your results are what they are', 'Acknowledge limitations (every study has them — be honest)', 'Clinical/research implications — what does this mean in practice?'],
-    tip: 'The Discussion is where you show your depth of understanding. Don\'t just repeat the Results.',
-  },
   Conclusion: {
     what: 'A brief, punchy summary of what your study proved and what should happen next.',
     structure: ['Restate your key finding (no new data)', 'Clinical implication — what should practitioners do?', 'Research implication — what should future studies do?'],
     tip: 'Keep it to 3-5 sentences. If it\'s longer, it\'s not a conclusion — it\'s another Discussion.',
+  },
+  Conclusions: {
+    what: 'Summarise the key takeaways from your study clearly and concisely.',
+    structure: ['What did you find? (one sentence)', 'Why does it matter? (clinical or research significance)', 'What should happen next? (future research or practice change)'],
+    tip: 'Avoid introducing new data or citations here. Conclusions = summary + so what.',
+  },
+  'Literature Review': {
+    what: 'A comprehensive synthesis of existing research relevant to your thesis topic.',
+    structure: ['Scope — define what you searched and what you included/excluded', 'Organise thematically (not chronologically) — group by concept, not by paper', 'For each theme: summarise what is known, what is debated, what is missing', 'Critically evaluate — don\'t just describe, analyse strengths and weaknesses', 'End with the gap your thesis addresses'],
+    tip: 'The literature review is not a summary of papers — it\'s a critical argument about the state of knowledge. Show you understand the field, not just the papers.',
+  },
+  Body: {
+    what: 'The main text of your letter — concise, focused, and evidenced.',
+    structure: ['Opening — state your point or response clearly in the first sentence', 'Evidence — 1–2 supporting data points or literature references', 'Clinical implication — why does this matter to readers?', 'Closing — one-sentence call to action or question'],
+    tip: 'Letters to editors are ≤400 words. Every sentence must earn its place. No waffle.',
+  },
+  Background: {
+    what: 'Provides context for the case — why this presentation is unusual or clinically important.',
+    structure: ['How common or rare is this condition?', 'What is typically known about diagnosis and management?', 'Why is this particular case notable — what makes it worth reporting?'],
+    tip: 'Keep it brief (2–3 paragraphs). Cite 3–5 key references. End with the clinical question this case addresses.',
+  },
+  'Case Report': {
+    what: 'A structured account of the patient\'s clinical presentation, diagnosis, and management.',
+    structure: ['Patient demographics (age, sex — no identifying details)', 'Presenting complaint and history', 'Examination findings', 'Investigations and results', 'Diagnosis reached', 'Treatment given (with doses and duration)', 'Follow-up and outcome'],
+    tip: 'Be precise. Use actual numbers — lab values, drug doses, timeframes. Reviewers will check for consistency.',
+  },
+  Recommendations: {
+    what: 'The actionable output of your audit — what needs to change based on what you found.',
+    structure: ['Summarise the gap identified between current practice and the standard', 'List specific, measurable recommendations (SMART format)', 'Assign responsibility — who should implement each recommendation?', 'Propose a re-audit date to close the loop'],
+    tip: 'Recommendations should be practical and implementable, not generic. Avoid "improve communication" — say exactly what should change and how it will be measured.',
   },
 }
 
@@ -101,9 +177,12 @@ function ScoreRing({ score }: { score: number }) {
 export default function EditorPanel({
   selectedSection, content, setContent, saving,
   reviewing, reviewData, onReview, onCloseReview, onSave, onKeywordsGenerated,
+  sectionWordLimit,
 }: EditorPanelProps) {
   const count = wordCount(content)
-  const limit = WORD_LIMITS[selectedSection] || 0
+  // Use journal-specific limit if provided, else fall back to defaults
+  const limit = sectionWordLimit ?? DEFAULT_WORD_LIMITS[selectedSection] ?? 0
+  const isJournalLimit = sectionWordLimit != null
   const isOver = limit > 0 && count > limit
   const panelRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
@@ -282,18 +361,25 @@ export default function EditorPanel({
         {/* Word count */}
         <div style={{ marginTop: 10, padding: '0 4px' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: limit > 0 ? 6 : 0 }}>
-            <span style={{ fontSize: 12, color: isOver ? '#f87171' : 'rgba(240,232,208,0.35)', fontWeight: isOver ? 600 : 400 }}>
-              {count} {limit > 0 ? `/ ${limit} words` : 'words'}
-            </span>
-            {isOver && <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600 }}>{count - limit} over limit</span>}
-            {limit > 0 && !isOver && count > 0 && <span style={{ fontSize: 12, color: 'rgba(240,232,208,0.3)' }}>{limit - count} remaining</span>}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <span style={{ fontSize: 12, color: isOver ? '#f87171' : 'rgba(240,232,208,0.35)', fontWeight: isOver ? 600 : 400 }}>
+                {count.toLocaleString()} {limit > 0 ? `/ ${limit.toLocaleString()} words` : 'words'}
+              </span>
+              {isJournalLimit && limit > 0 && (
+                <span style={{ fontSize: 10, color: 'rgba(201,148,58,0.5)', background: 'rgba(201,148,58,0.08)', border: '1px solid rgba(201,148,58,0.2)', padding: '1px 7px', borderRadius: 10, fontWeight: 600 }}>
+                  journal limit
+                </span>
+              )}
+            </div>
+            {isOver && <span style={{ fontSize: 12, color: '#f87171', fontWeight: 600 }}>{(count - limit).toLocaleString()} over limit</span>}
+            {limit > 0 && !isOver && count > 0 && <span style={{ fontSize: 12, color: 'rgba(240,232,208,0.3)' }}>{(limit - count).toLocaleString()} remaining</span>}
           </div>
           {limit > 0 && (
             <div style={{ height: 3, borderRadius: 2, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
               <div style={{
                 height: '100%', borderRadius: 2,
                 width: `${Math.min((count / limit) * 100, 100)}%`,
-                background: isOver ? '#f87171' : count / limit > 0.8 ? '#f59e0b' : '#c9943a',
+                background: isOver ? '#f87171' : count / limit > 0.85 ? '#f59e0b' : isJournalLimit ? '#c9943a' : '#60a5fa',
                 transition: 'width 0.3s ease, background 0.3s ease',
               }} />
             </div>

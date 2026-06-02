@@ -14,9 +14,9 @@ import EditorPanel from '../../../lib/components/workspace/EditorPanel'
 import UploadsPanel from '../../../lib/components/workspace/UploadsPanel'
 import AIAssistantPanel from '../../../lib/components/workspace/AIAssistantPanel'
 import RejectionTracker from '../../../lib/components/workspace/RejectionTracker'
+import CoverLetterPanel from '../../../lib/components/workspace/CoverLetterPanel'
 import JournalSelector from '../../../lib/components/workspace/JournalSelector'
 import CitationGenerator from '../../../lib/components/workspace/CitationGenerator'
-import SubmissionChecklist from '../../../lib/components/workspace/SubmissionChecklist'
 import AuthorsPanel from '../../../lib/components/workspace/AuthorsPanel'
 import ClinicalTrialsPanel from '../../../lib/components/workspace/ClinicalTrialsPanel'
 import DOIResolverPanel from '../../../lib/components/workspace/DOIResolverPanel'
@@ -74,11 +74,36 @@ export default function WorkspacePage() {
 
   const DEFAULT_SECTIONS = ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'References', 'Plagiarism Check']
 
-  const manuscriptSections = project
-    ? (MANUSCRIPT_SECTIONS[project.study_type] ?? DEFAULT_SECTIONS)
-    : DEFAULT_SECTIONS
+  // Journal-specific section overrides loaded from project_sections
+  const [journalSections, setJournalSections] = useState<string[] | null>(null)
+  const [journalSectionLimits, setJournalSectionLimits] = useState<Record<string, number> | null>(null)
 
-  const TOOL_SECTIONS = ['Authors', 'AI Assistant', 'Uploads', 'Clinical Trials', 'DOI Resolver', 'Citation Generator', 'Journal Selector', 'Submission Checklist', 'Rejection Tracker']
+  useEffect(() => {
+    if (!project) return
+    const loadJournalData = async () => {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) return
+      const [sectionsRow, limitsRow] = await Promise.all([
+        supabase.from('project_sections').select('content')
+          .eq('project_id', project.id).eq('user_id', user.id).eq('section', '__journal_sections__').single(),
+        supabase.from('project_sections').select('content')
+          .eq('project_id', project.id).eq('user_id', user.id).eq('section', '__journal_section_limits__').single(),
+      ])
+      if (sectionsRow.data?.content) {
+        try { setJournalSections(JSON.parse(sectionsRow.data.content)) } catch {}
+      }
+      if (limitsRow.data?.content) {
+        try { setJournalSectionLimits(JSON.parse(limitsRow.data.content)) } catch {}
+      }
+    }
+    loadJournalData()
+  }, [project?.id])
+
+  const manuscriptSections = journalSections
+    ?? (project ? (MANUSCRIPT_SECTIONS[project.study_type] ?? DEFAULT_SECTIONS) : DEFAULT_SECTIONS)
+
+  const TOOL_SECTIONS = ['Authors', 'AI Assistant', 'Uploads', 'Clinical Trials', 'DOI Resolver', 'Journal Selector', 'Submission Tracker', 'Cover Letter']
 
   const sections = ['Overview', ...manuscriptSections, ...TOOL_SECTIONS]
 
@@ -371,7 +396,7 @@ export default function WorkspacePage() {
     })
   }
 
-  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'Citation Generator', 'Submission Checklist', 'Journal Selector', 'Rejection Tracker', 'AI Assistant', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check'])
+  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'References', 'Journal Selector', 'Submission Tracker', 'Cover Letter', 'AI Assistant', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check'])
   const isEditorSection = !NON_EDITOR.has(selectedSection)
 
   return (
@@ -404,7 +429,7 @@ export default function WorkspacePage() {
               onShare={shareManuscript}
             />
 
-            <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, padding: '28px 32px', minHeight: 500 }}>
+            <div style={{ padding: '4px 0', minHeight: 500 }}>
               {selectedSection === 'Overview' && (
                 <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} onNavigate={setSelectedSection} />
               )}
@@ -421,6 +446,7 @@ export default function WorkspacePage() {
                   onCloseReview={() => setReviewData(null)}
                   onSave={() => saveContent()}
                   onKeywordsGenerated={saveKeywords}
+                  sectionWordLimit={journalSectionLimits?.[selectedSection] ?? undefined}
                 />
               )}
 
@@ -428,12 +454,8 @@ export default function WorkspacePage() {
                 <UploadsPanel projectId={project.id} projectTitle={project.title} studyType={project.study_type} />
               )}
 
-              {selectedSection === 'Citation Generator' && (
+              {selectedSection === 'References' && (
                 <CitationGenerator projectId={project.id} />
-              )}
-
-              {selectedSection === 'Submission Checklist' && (
-                <SubmissionChecklist projectId={project.id} />
               )}
 
               {selectedSection === 'Authors' && (
@@ -445,11 +467,20 @@ export default function WorkspacePage() {
                   projectId={project.id}
                   currentJournal={project.target_journal ?? null}
                   studyType={project.study_type}
+                  onNavigate={setSelectedSection}
                 />
               )}
 
-              {selectedSection === 'Rejection Tracker' && (
-                <RejectionTracker projectId={project.id} />
+              {selectedSection === 'Submission Tracker' && (
+                <RejectionTracker projectId={project.id} projectTitle={project.title} />
+              )}
+
+              {selectedSection === 'Cover Letter' && (
+                <CoverLetterPanel
+                  projectId={project.id}
+                  projectTitle={project.title}
+                  studyType={project.study_type}
+                />
               )}
 
               {selectedSection === 'AI Assistant' && (
