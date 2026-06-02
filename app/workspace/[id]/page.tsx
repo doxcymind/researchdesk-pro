@@ -383,11 +383,12 @@ export default function WorkspacePage() {
 
   const renameProject = async (newTitle: string) => {
     if (!project) return
-    const { data: { session } } = await supabase.auth.getSession()
-    const user = session?.user
-    if (!user) return
-    await supabase.from('projects').update({ title: newTitle }).eq('id', project.id).eq('user_id', user.id)
-    setProject(p => p ? { ...p, title: newTitle } : p)
+    const res = await apiFetch('/api/rename-project', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId: project.id, title: newTitle }),
+    })
+    if (res.ok) setProject(p => p ? { ...p, title: newTitle } : p)
   }
 
   const logActivity = async (action: string) => {
