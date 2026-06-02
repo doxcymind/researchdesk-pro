@@ -215,8 +215,8 @@ export default function HomePage() {
         {/* LAYER 6 — Vignettes */}
         <div style={{ position: 'absolute', inset: 0, zIndex: 3, pointerEvents: 'none',
           background: 'linear-gradient(to right, rgba(8,12,24,0.82) 0%, rgba(8,12,24,0.5) 30%, rgba(8,12,24,0.1) 55%, transparent 70%)' }}/>
-        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '28%', zIndex: 3, pointerEvents: 'none',
-          background: 'linear-gradient(to top, #080c18 0%, transparent 100%)' }}/>
+        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '45%', zIndex: 3, pointerEvents: 'none',
+          background: 'linear-gradient(to top, #07090f 0%, #07090f 20%, rgba(7,9,15,0.85) 50%, transparent 100%)' }}/>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '10%', zIndex: 3, pointerEvents: 'none',
           background: 'linear-gradient(to bottom, rgba(8,12,24,0.6) 0%, transparent 100%)' }}/>
 
@@ -367,7 +367,7 @@ export default function HomePage() {
               <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #8b6914 15%, #c9943a 35%, #f0d060 50%, #c9943a 65%, #8b6914 85%, transparent)' }}/>
               <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: 500, height: 220, borderRadius: '50%', background: 'radial-gradient(ellipse, rgba(201,148,58,0.05) 0%, transparent 70%)', pointerEvents: 'none' }}/>
 
-              <p style={{ textAlign: 'center', fontSize: 9.5, fontWeight: 700, color: 'rgba(201,148,58,0.45)', letterSpacing: '0.22em', textTransform: 'uppercase', marginBottom: 26, fontFamily: cinzel, position: 'relative' }}>
+              <p style={{ textAlign: 'center', fontSize: 12, fontWeight: 700, color: 'rgba(201,148,58,0.75)', letterSpacing: '0.18em', textTransform: 'uppercase', marginBottom: 26, fontFamily: cinzel, position: 'relative' }}>
                 ✦ &nbsp; Research Journey &nbsp; ✦
               </p>
 
@@ -394,8 +394,8 @@ export default function HomePage() {
                         }}>{node.emoji}</div>
                       </div>
                       <div style={{ textAlign: 'center' }}>
-                        <div style={{ fontSize: 12, fontWeight: 700, color: '#f0e8d0', fontFamily: cinzel, letterSpacing: '0.03em' }}>{node.label}</div>
-                        <div style={{ fontSize: 9.5, color: 'rgba(201,148,58,0.45)', marginTop: 3, lineHeight: 1.4 }}>{node.sub}</div>
+                        <div style={{ fontSize: 15, fontWeight: 700, color: '#f0e8d0', fontFamily: cinzel, letterSpacing: '0.03em' }}>{node.label}</div>
+                        <div style={{ fontSize: 12, color: 'rgba(201,148,58,0.75)', marginTop: 4, lineHeight: 1.4 }}>{node.sub}</div>
                       </div>
                     </div>
                     {ni < 2 && (
@@ -481,6 +481,47 @@ export default function HomePage() {
 
         </section>
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════
+          FEATURES SECTION
+      ═══════════════════════════════════════════════════════════ */}
+      <section style={{ background: '#07090f', padding: '48px 56px 90px', borderTop: '1px solid rgba(201,148,58,0.08)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+
+          {/* Heading */}
+          <div style={{ marginBottom: 48, display: 'flex', alignItems: 'baseline', gap: 24, flexWrap: 'wrap' }}>
+            <h2 style={{ fontFamily: cinzel, fontSize: 'clamp(1.2rem,2vw,1.6rem)', fontWeight: 700,
+              color: '#f0e8d0', margin: 0, lineHeight: 1.2, letterSpacing: '0.02em' }}>
+              Built for every stage of the research process
+            </h2>
+            <div style={{ height: 1, flex: 1, minWidth: 40, background: 'linear-gradient(to right, rgba(201,148,58,0.25), transparent)' }}/>
+          </div>
+
+          {/* Feature rows */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '36px 52px' }}>
+            {[
+              { icon: '✦', color: '#c9943a', title: 'AI Section Review',       desc: 'Section-by-section feedback on structure, logic, and language — like a senior mentor reading your draft.' },
+              { icon: '📎', color: '#a78bfa', title: 'Smart Citations',         desc: 'Auto-generate Vancouver, APA, and AMA bibliographies from DOIs, titles, or saved references.' },
+              { icon: '🔬', color: '#34d399', title: 'Multi-Source Literature', desc: 'Search PubMed, Semantic Scholar, and Europe PMC simultaneously — no tab-switching.' },
+              { icon: '🏆', color: '#60a5fa', title: 'Journal Match',           desc: 'Enter your topic and study type. Get ranked journal recommendations with impact factors.' },
+              { icon: '🧪', color: '#f472b6', title: 'Clinical Trials',         desc: 'Search ClinicalTrials.gov and add relevant trials directly to your references.' },
+              { icon: '✔️', color: '#fbbf24', title: 'Plagiarism Check',        desc: 'Built-in similarity check before you submit — so there are no surprises at the journal.' },
+            ].map(f => (
+              <div key={f.title} style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <span style={{ fontSize: 15 }}>{f.icon}</span>
+                  <div style={{ height: 1, flex: 1, background: `linear-gradient(to right, ${f.color}33, transparent)` }}/>
+                </div>
+                <h3 style={{ fontFamily: cinzel, fontSize: 17, fontWeight: 700, color: f.color,
+                  margin: 0, letterSpacing: '0.04em' }}>{f.title}</h3>
+                <p style={{ fontFamily: inter, fontSize: 15, color: 'rgba(200,175,130,0.8)',
+                  margin: 0, lineHeight: 1.75 }}>{f.desc}</p>
+              </div>
+            ))}
+          </div>
+
+        </div>
+      </section>
 
       {/* ═══════════════════════════════════════════════════════════
           CTA BANNER
