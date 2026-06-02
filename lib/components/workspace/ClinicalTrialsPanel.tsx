@@ -1,7 +1,8 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { apiFetch } from '@/lib/api-fetch'
+import { supabase } from '@/lib/supabase'
 
 interface Trial {
   nctId: string
@@ -36,15 +37,39 @@ function formatStatus(s: string) {
   return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 }
 
-export default function ClinicalTrialsPanel() {
-  const [query, setQuery] = useState('')
+interface Props {
+  projectId?: number
+  projectTitle?: string
+  studyType?: string
+}
+
+export default function ClinicalTrialsPanel({ projectId, projectTitle, studyType }: Props) {
+  const shortTitle = projectTitle
+    ? projectTitle.split(/\s*[-:]\s*/)[0].trim().split(/\s+/).slice(0, 6).join(' ')
+    : ''
+
+  const [query, setQuery] = useState(shortTitle)
   const [results, setResults] = useState<Trial[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
   const [expanded, setExpanded] = useState<string | null>(null)
   const [copied, setCopied] = useState<string | null>(null)
+  const [addedIds, setAddedIds] = useState<Set<string>>(new Set())
+  const [addingId, setAddingId] = useState<string | null>(null)
+
+  // AI suggestion state
+  const [aiSuggestions, setAiSuggestions] = useState<string>('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiDone, setAiDone] = useState(false)
+
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Auto-search on mount using project title
+  useEffect(() => {
+    if (shortTitle) search(shortTitle)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const search = async (q = query) => {
     if (!q.trim()) return
@@ -56,6 +81,86 @@ export default function ClinicalTrialsPanel() {
       setTotal(data.total || 0)
     } catch { setResults([]) }
     setLoading(false)
+  }
+
+  const addToReferences = async (trial: Trial) => {
+    if (!projectId) return
+    setAddingId(trial.nctId)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      const user = session?.user
+      if (!user) { setAddingId(null); return }
+
+      const phase = trial.phase ? ` Phase ${trial.phase}.` : ''
+      const formatted = `${trial.sponsor ? trial.sponsor + '. ' : ''}${trial.title}.${phase} ClinicalTrials.gov Identifier: ${trial.nctId}. Available from: https://clinicaltrials.gov/study/${trial.nctId}`
+
+      const citation = {
+        id: `ct_${trial.nctId}`,
+        text: formatted,
+        style: 'Vancouver',
+        input: trial.title,
+        type: 'clinical_trial',
+        url: `https://clinicaltrials.gov/study/${trial.nctId}`,
+      }
+
+      const { data: existing_row } = await supabase.from('project_sections')
+        .select('id, content').eq('project_id', projectId).eq('user_id', user.id).eq('section', '__citations__').single()
+
+      let existing: any[] = []
+      try { existing = JSON.parse(existing_row?.content || '[]') } catch { existing = [] }
+      const updated = [...existing.filter((c: any) => c.id !== citation.id), citation]
+
+      if (existing_row?.id) {
+        await supabase.from('project_sections').update({ content: JSON.stringify(updated) }).eq('id', existing_row.id).eq('user_id', user.id)
+      } else {
+        await supabase.from('project_sections').insert({ project_id: projectId, user_id: user.id, section: '__citations__', content: JSON.stringify(updated) })
+      }
+      setAddedIds(prev => new Set([...prev, trial.nctId]))
+    } catch {}
+    setAddingId(null)
+  }
+
+  const getAiSuggestions = async () => {
+    if (!results.length || !projectTitle) return
+    setAiLoading(true)
+    setAiDone(false)
+    setAiSuggestions('')
+    try {
+      const trialList = results.slice(0, 8).map((t, i) =>
+        `${i + 1}. [${t.nctId}] ${t.title} — ${formatStatus(t.status)}${t.phase ? `, ${t.phase}` : ''}${t.enrollment ? `, n=${t.enrollment}` : ''}`
+      ).join('\n')
+
+      const res = await apiFetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectTitle,
+          studyType: studyType || '',
+          projectId,
+          messages: [{
+            role: 'user',
+            content: `I am writing a ${studyType || 'manuscript'} titled "${projectTitle}".
+
+Here are clinical trials I found related to my topic:
+${trialList}
+
+For each relevant trial, tell me:
+1. Which section of my manuscript to cite it in (Introduction / Methods / Discussion)
+2. Why it's relevant and what specific claim it supports
+3. Whether it strengthens or contradicts my topic
+
+Be specific and concise. Format as a numbered list matching the trial numbers above. Skip trials that are not relevant.`,
+          }],
+        }),
+      })
+      const data = await res.json()
+      setAiSuggestions(data.reply || 'No suggestions available.')
+      setAiDone(true)
+    } catch {
+      setAiSuggestions('AI suggestion failed. Please try again.')
+      setAiDone(true)
+    }
+    setAiLoading(false)
   }
 
   const cite = (trial: Trial) => {
@@ -82,7 +187,7 @@ export default function ClinicalTrialsPanel() {
       <div style={{ marginBottom: 22 }}>
         <p style={{ fontSize: 11, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 6px', fontWeight: 700 }}>✦ ClinicalTrials.gov</p>
         <h2 style={{ fontSize: 20, fontWeight: 600, color: '#f0e8d0', margin: '0 0 6px', fontFamily: cinzel }}>Trial Search</h2>
-        <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.4)', margin: 0 }}>Search registered clinical trials. Click any result to expand, cite, or view on ClinicalTrials.gov.</p>
+        <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.4)', margin: 0 }}>Trials auto-searched from your project title. Ask AI which ones to cite and where.</p>
       </div>
 
       {/* Search box */}
@@ -133,9 +238,36 @@ export default function ClinicalTrialsPanel() {
 
       {!loading && results.length > 0 && (
         <>
-          <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', marginBottom: 12 }}>
-            Showing {results.length} of {total.toLocaleString()} results
-          </p>
+          {/* Results count + AI Suggest button */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>
+              Showing {results.length} of {total.toLocaleString()} results
+            </p>
+            <button
+              onClick={getAiSuggestions}
+              disabled={aiLoading}
+              style={{ padding: '6px 14px', borderRadius: 9, fontSize: 11, fontWeight: 700, cursor: aiLoading ? 'wait' : 'pointer', fontFamily: inter, display: 'flex', alignItems: 'center', gap: 6,
+                background: aiDone ? 'rgba(52,211,153,0.1)' : 'rgba(201,148,58,0.12)',
+                border: `1px solid ${aiDone ? 'rgba(52,211,153,0.3)' : 'rgba(201,148,58,0.3)'}`,
+                color: aiDone ? '#34d399' : '#c9943a' }}>
+              {aiLoading ? '✦ Analysing…' : aiDone ? '✓ AI Suggestions' : '✦ Ask AI: Which to cite?'}
+            </button>
+          </div>
+
+          {/* AI Suggestions panel */}
+          {(aiLoading || aiSuggestions) && (
+            <div style={{ marginBottom: 16, padding: '16px 18px', borderRadius: 14, background: 'rgba(201,148,58,0.04)', border: '1px solid rgba(201,148,58,0.15)' }}>
+              <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', margin: '0 0 10px' }}>✦ AI Citation Suggestions</p>
+              {aiLoading ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <div style={{ width: 14, height: 14, borderRadius: '50%', border: '2px solid rgba(201,148,58,0.2)', borderTopColor: '#c9943a', animation: 'spin 0.8s linear infinite', flexShrink: 0 }} />
+                  <span style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)' }}>Analysing trials against your manuscript…</span>
+                </div>
+              ) : (
+                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.7)', margin: 0, lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{aiSuggestions}</p>
+              )}
+            </div>
+          )}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             {results.map(trial => {
               const sc = STATUS_COLOR[trial.status] || DEFAULT_STATUS
@@ -198,11 +330,19 @@ export default function ClinicalTrialsPanel() {
                       )}
                       {/* Actions */}
                       <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>
-                        <button onClick={() => cite(trial)} style={{ padding: '7px 14px', borderRadius: 8, background: copied === trial.nctId ? 'rgba(52,211,153,0.1)' : 'rgba(201,148,58,0.1)', border: `1px solid ${copied === trial.nctId ? 'rgba(52,211,153,0.3)' : 'rgba(201,148,58,0.25)'}`, color: copied === trial.nctId ? '#34d399' : '#c9943a', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: inter }}>
-                          {copied === trial.nctId ? '✓ Citation Copied' : '📎 Cite Trial'}
-                        </button>
-                        <button onClick={() => copyId(trial.nctId)} style={{ padding: '7px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: copied === `link-${trial.nctId}` ? '#34d399' : 'rgba(240,232,208,0.5)', fontSize: 12, cursor: 'pointer', fontFamily: inter }}>
-                          {copied === `link-${trial.nctId}` ? '✓ Copied' : '🔗 Copy Link'}
+                        {projectId && (
+                          <button
+                            onClick={() => addToReferences(trial)}
+                            disabled={addingId === trial.nctId || addedIds.has(trial.nctId)}
+                            style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, cursor: addedIds.has(trial.nctId) ? 'default' : 'pointer', fontFamily: inter,
+                              background: addedIds.has(trial.nctId) ? 'rgba(52,211,153,0.1)' : 'rgba(201,148,58,0.12)',
+                              border: `1px solid ${addedIds.has(trial.nctId) ? 'rgba(52,211,153,0.3)' : 'rgba(201,148,58,0.3)'}`,
+                              color: addedIds.has(trial.nctId) ? '#34d399' : '#c9943a' }}>
+                            {addedIds.has(trial.nctId) ? '✓ Added to References' : addingId === trial.nctId ? 'Adding…' : '+ Add to References'}
+                          </button>
+                        )}
+                        <button onClick={() => cite(trial)} style={{ padding: '7px 14px', borderRadius: 8, background: copied === trial.nctId ? 'rgba(52,211,153,0.1)' : 'rgba(255,255,255,0.04)', border: `1px solid ${copied === trial.nctId ? 'rgba(52,211,153,0.3)' : 'rgba(255,255,255,0.08)'}`, color: copied === trial.nctId ? '#34d399' : 'rgba(240,232,208,0.5)', fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: inter }}>
+                          {copied === trial.nctId ? '✓ Copied' : '📎 Copy Citation'}
                         </button>
                         <a href={`https://clinicaltrials.gov/study/${trial.nctId}`} target="_blank" rel="noopener" style={{ padding: '7px 14px', borderRadius: 8, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', color: 'rgba(240,232,208,0.5)', fontSize: 12, textDecoration: 'none', fontFamily: inter }}>
                           View on CT.gov ↗
@@ -216,6 +356,7 @@ export default function ClinicalTrialsPanel() {
           </div>
         </>
       )}
+      <style>{`@keyframes pulse{0%,100%{opacity:0.4}50%{opacity:0.7}} @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}`}</style>
     </div>
   )
 }

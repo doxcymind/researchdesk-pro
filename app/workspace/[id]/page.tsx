@@ -538,7 +538,11 @@ export default function WorkspacePage() {
               )}
 
               {selectedSection === 'Clinical Trials' && (
-                <ClinicalTrialsPanel />
+                <ClinicalTrialsPanel
+                  projectId={project.id}
+                  projectTitle={project.title}
+                  studyType={project.study_type}
+                />
               )}
 
               {selectedSection === 'DOI Resolver' && (
