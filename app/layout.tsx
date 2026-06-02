@@ -22,12 +22,13 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: { default: "ResearchDesk — AI-Powered Medical Research", template: "%s · ResearchDesk" },
-  description: "AI-assisted tools for writing, reviewing, and publishing medical research. From Idea to Manuscript to Publication.",
+  title: { default: "ResearchDesk — Write Medical Research, Case Reports & Review Articles", template: "%s · ResearchDesk" },
+  description: "ResearchDesk is an AI-powered workspace for writing medical research. Draft case reports, review articles, systematic reviews and meta-analyses — with built-in PubMed search, Vancouver citations, AI section review, and journal matching.",
+  keywords: ["medical research writing", "case report", "review article", "systematic review", "meta-analysis", "PubMed", "Vancouver citations", "AI research assistant", "journal submission", "clinical study", "medical manuscript"],
   icons: { icon: '/logo.webp', apple: '/logo.webp' },
   openGraph: {
     title: "ResearchDesk — The Smartest Way to Write Medical Research",
-    description: "AI-assisted tools for writing, reviewing, and publishing medical research.",
+    description: "Draft case reports, review articles, systematic reviews and meta-analyses — with built-in PubMed search, Vancouver citations, AI section review, and journal matching.",
     siteName: "ResearchDesk",
     type: "website",
   },

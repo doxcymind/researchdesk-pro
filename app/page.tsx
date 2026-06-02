@@ -274,22 +274,9 @@ export default function HomePage() {
 
           <div className="hero-left">
 
-            {/* Eyebrow badge */}
-            <div className="fade-up-1 badge-glow" style={{ display: 'inline-flex', alignItems: 'center', gap: 10,
-              marginBottom: 34, padding: '9px 22px', borderRadius: 40,
-              border: '1px solid rgba(201,148,58,0.7)',
-              background: 'linear-gradient(90deg, rgba(201,148,58,0.15) 0%, rgba(201,148,58,0.07) 100%)',
-              color: '#f0c96a', fontSize: 12.5, fontWeight: 600, letterSpacing: '0.04em',
-              fontFamily: inter, backdropFilter: 'blur(12px)',
-              boxShadow: '0 0 16px rgba(201,148,58,0.2), inset 0 1px 0 rgba(255,220,100,0.15)' }}>
-              <span style={{ fontSize: 13 }}>✦</span>
-              PubMed · Semantic Scholar · Europe PMC · Clinical Trials — built in
-              <span style={{ fontSize: 13 }}>✦</span>
-            </div>
-
             {/* Main headline — typewriter on last word */}
             <h1 className="fade-up-2" style={{ fontFamily: cinzel, fontWeight: 700, lineHeight: 1.08,
-              marginBottom: 0, fontSize: 'clamp(3.2rem,5vw,5rem)', letterSpacing: '0.015em',
+              marginBottom: 0, marginTop: '-18px', fontSize: 'clamp(3.2rem,5vw,5rem)', letterSpacing: '0.015em',
               color: '#f5eedd', textShadow: '0 2px 40px rgba(201,148,58,0.15)' }}>
               <span className="headline-word">The Smartest Way</span><br/>
               <span className="headline-word">to Write</span>{' '}
@@ -305,8 +292,21 @@ export default function HomePage() {
               </span>
             </h1>
 
+            {/* Badge — below headline */}
+            <div className="fade-up-3 badge-glow" style={{ display: 'inline-flex', alignItems: 'center', gap: 10,
+              margin: '28px 0 0', padding: '9px 22px', borderRadius: 40,
+              border: '1px solid rgba(201,148,58,0.7)',
+              background: 'linear-gradient(90deg, rgba(201,148,58,0.15) 0%, rgba(201,148,58,0.07) 100%)',
+              color: '#f0c96a', fontSize: 12.5, fontWeight: 600, letterSpacing: '0.04em',
+              fontFamily: inter, backdropFilter: 'blur(12px)',
+              boxShadow: '0 0 16px rgba(201,148,58,0.2), inset 0 1px 0 rgba(255,220,100,0.15)' }}>
+              <span style={{ fontSize: 13 }}>✦</span>
+              PubMed · Semantic Scholar · Europe PMC · Clinical Trials — built in
+              <span style={{ fontSize: 13 }}>✦</span>
+            </div>
+
             {/* Ornamental rule */}
-            <div className="fade-up-3" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '16px 0 12px' }}>
+            <div className="fade-up-3" style={{ display: 'flex', alignItems: 'center', gap: 10, margin: '28px 0 20px' }}>
               <div style={{ height: 1, width: 20, background: 'rgba(201,148,58,0.4)' }}/>
               <div style={{ height: 1, width: 40, background: 'rgba(201,148,58,0.7)' }}/>
               <svg width="14" height="14" viewBox="0 0 10 10" fill="#c9943a">
@@ -317,7 +317,7 @@ export default function HomePage() {
             </div>
 
             {/* Sub-copy */}
-            <div className="fade-up-3" style={{ marginBottom: 38, maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 10 }}>
+            <div className="fade-up-3" style={{ marginBottom: 44, maxWidth: 420, display: 'flex', flexDirection: 'column', gap: 14 }}>
               <div style={{ fontSize: '0.95rem', fontWeight: 500, lineHeight: 1.6, color: 'rgba(210,185,140,0.9)', fontFamily: inter }}>
                 ✕&nbsp; No more juggling{' '}
                 <span style={{color:'#c9943a'}}>Word</span>,{' '}
@@ -483,41 +483,72 @@ export default function HomePage() {
       </div>
 
       {/* ═══════════════════════════════════════════════════════════
-          FEATURES SECTION
+          FEATURES + WHO IS THIS FOR — SIDE BY SIDE
       ═══════════════════════════════════════════════════════════ */}
-      <section style={{ background: '#07090f', padding: '48px 56px 90px', borderTop: '1px solid rgba(201,148,58,0.08)' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+      <section style={{ background: '#07090f', padding: '72px 56px', borderTop: '1px solid rgba(201,148,58,0.08)' }}>
+        <div style={{ maxWidth: 1100, margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1px 1fr', gap: '0 52px', alignItems: 'start' }}>
 
-          {/* Heading */}
-          <div style={{ marginBottom: 48, display: 'flex', alignItems: 'baseline', gap: 24, flexWrap: 'wrap' }}>
-            <h2 style={{ fontFamily: cinzel, fontSize: 'clamp(1.2rem,2vw,1.6rem)', fontWeight: 700,
-              color: '#f0e8d0', margin: 0, lineHeight: 1.2, letterSpacing: '0.02em' }}>
+          {/* ── Left: Features ── */}
+          <div>
+            <p style={{ fontFamily: cinzel, fontSize: 13, fontWeight: 700, letterSpacing: '0.18em',
+              color: 'rgba(201,148,58,0.7)', textTransform: 'uppercase', margin: '0 0 14px' }}>✦ &nbsp; What it does</p>
+            <h2 style={{ fontFamily: cinzel, fontSize: 'clamp(1.1rem,1.8vw,1.45rem)', fontWeight: 700,
+              color: '#f0e8d0', margin: '0 0 40px', lineHeight: 1.2, letterSpacing: '0.02em' }}>
               Built for every stage of the research process
             </h2>
-            <div style={{ height: 1, flex: 1, minWidth: 40, background: 'linear-gradient(to right, rgba(201,148,58,0.25), transparent)' }}/>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              {[
+                { icon: '✦', color: '#c9943a', title: 'AI Section Review',       desc: 'Section-by-section feedback on structure, logic, and language — like a senior mentor reading your draft.' },
+                { icon: '📎', color: '#a78bfa', title: 'Smart Citations',         desc: 'Auto-generate Vancouver, APA, and AMA bibliographies from DOIs, titles, or saved references.' },
+                { icon: '🔬', color: '#34d399', title: 'Multi-Source Literature', desc: 'Search PubMed, Semantic Scholar, and Europe PMC simultaneously — no tab-switching.' },
+                { icon: '🏆', color: '#60a5fa', title: 'Journal Match',           desc: 'Enter your topic and study type. Get ranked journal recommendations with impact factors.' },
+                { icon: '🧪', color: '#f472b6', title: 'Clinical Trials',         desc: 'Search ClinicalTrials.gov and add relevant trials directly to your references.' },
+                { icon: '✔️', color: '#fbbf24', title: 'Plagiarism Check',        desc: 'Built-in similarity check before you submit — so there are no surprises at the journal.' },
+              ].map(f => (
+                <div key={f.title} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }}>{f.icon}</span>
+                  <div>
+                    <h3 style={{ fontFamily: cinzel, fontSize: 16, fontWeight: 700, color: f.color,
+                      margin: '0 0 6px', letterSpacing: '0.03em' }}>{f.title}</h3>
+                    <p style={{ fontFamily: inter, fontSize: 14.5, color: 'rgba(200,175,130,0.75)',
+                      margin: 0, lineHeight: 1.7 }}>{f.desc}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {/* Feature rows */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '36px 52px' }}>
-            {[
-              { icon: '✦', color: '#c9943a', title: 'AI Section Review',       desc: 'Section-by-section feedback on structure, logic, and language — like a senior mentor reading your draft.' },
-              { icon: '📎', color: '#a78bfa', title: 'Smart Citations',         desc: 'Auto-generate Vancouver, APA, and AMA bibliographies from DOIs, titles, or saved references.' },
-              { icon: '🔬', color: '#34d399', title: 'Multi-Source Literature', desc: 'Search PubMed, Semantic Scholar, and Europe PMC simultaneously — no tab-switching.' },
-              { icon: '🏆', color: '#60a5fa', title: 'Journal Match',           desc: 'Enter your topic and study type. Get ranked journal recommendations with impact factors.' },
-              { icon: '🧪', color: '#f472b6', title: 'Clinical Trials',         desc: 'Search ClinicalTrials.gov and add relevant trials directly to your references.' },
-              { icon: '✔️', color: '#fbbf24', title: 'Plagiarism Check',        desc: 'Built-in similarity check before you submit — so there are no surprises at the journal.' },
-            ].map(f => (
-              <div key={f.title} style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                  <span style={{ fontSize: 15 }}>{f.icon}</span>
-                  <div style={{ height: 1, flex: 1, background: `linear-gradient(to right, ${f.color}33, transparent)` }}/>
+          {/* ── Divider ── */}
+          <div style={{ background: 'rgba(201,148,58,0.1)', alignSelf: 'stretch' }}/>
+
+          {/* ── Right: Who it's for ── */}
+          <div>
+            <p style={{ fontFamily: cinzel, fontSize: 13, fontWeight: 700, letterSpacing: '0.18em',
+              color: 'rgba(201,148,58,0.7)', textTransform: 'uppercase', margin: '0 0 14px' }}>✦ &nbsp; Who it&apos;s for</p>
+            <h2 style={{ fontFamily: cinzel, fontSize: 'clamp(1.1rem,1.8vw,1.45rem)', fontWeight: 700,
+              color: '#f0e8d0', margin: '0 0 40px', lineHeight: 1.2, letterSpacing: '0.02em' }}>
+              Written for the researcher, not the institution
+            </h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 28 }}>
+              {[
+                { role: 'Medical Student',        icon: '🎓', pain: 'Writing your first case report with no idea where to start.',           fix: 'Guided templates and AI that explains every step as you write.' },
+                { role: 'Resident & Fellow',      icon: '🏥', pain: '20 minutes between shifts. A manuscript that needs finishing.',          fix: 'Autosave and AI drafting so you can write in fragments.' },
+                { role: 'Consultant & Specialist',icon: '👨‍⚕️', pain: 'Submitting to a high-impact journal. No room for error.',              fix: 'Journal Match, citation audit, and a publication checklist — built in.' },
+                { role: 'PhD Researcher',         icon: '🔬', pain: 'A systematic review with 200 references and three databases to manage.', fix: 'Multi-source literature search and smart citation management in one place.' },
+              ].map(p => (
+                <div key={p.role} style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+                  <span style={{ fontSize: 16, marginTop: 2, flexShrink: 0 }}>{p.icon}</span>
+                  <div>
+                    <h3 style={{ fontFamily: cinzel, fontSize: 16, fontWeight: 700, color: '#c9943a',
+                      margin: '0 0 6px', letterSpacing: '0.03em' }}>{p.role}</h3>
+                    <p style={{ fontFamily: inter, fontSize: 14.5, color: 'rgba(240,232,208,0.45)',
+                      margin: '0 0 5px', lineHeight: 1.65, fontStyle: 'italic' }}>&ldquo;{p.pain}&rdquo;</p>
+                    <p style={{ fontFamily: inter, fontSize: 14.5, color: 'rgba(200,175,130,0.75)',
+                      margin: 0, lineHeight: 1.65 }}>{p.fix}</p>
+                  </div>
                 </div>
-                <h3 style={{ fontFamily: cinzel, fontSize: 17, fontWeight: 700, color: f.color,
-                  margin: 0, letterSpacing: '0.04em' }}>{f.title}</h3>
-                <p style={{ fontFamily: inter, fontSize: 15, color: 'rgba(200,175,130,0.8)',
-                  margin: 0, lineHeight: 1.75 }}>{f.desc}</p>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
 
         </div>
@@ -538,21 +569,76 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════
           FOOTER
       ═══════════════════════════════════════════════════════════ */}
-      <footer style={{ borderTop: '1px solid rgba(180,130,20,0.12)', background: '#0c0906', padding: '26px 0' }}>
-        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '0 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#4a3820', fontSize: 12 }}>
-          <div style={{ fontFamily: cinzel, letterSpacing: '0.05em' }}>© 2026 ResearchDesk. All rights reserved.</div>
-          <div style={{ display: 'flex', gap: 30 }}>
+      <footer style={{ borderTop: '1px solid rgba(201,148,58,0.1)', background: '#05070d' }}>
+
+        {/* Main footer body */}
+        <div style={{ maxWidth: 1100, margin: '0 auto', padding: '36px 56px 30px', display: 'grid', gridTemplateColumns: '1.4fr 1fr 1fr', gap: '24px 48px' }}>
+
+          {/* Brand column */}
+          <div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
+              <img src="/logo.webp" alt="ResearchDesk" style={{ width: 32, height: 32, borderRadius: 7, objectFit: 'cover', border: '1px solid rgba(201,148,58,0.3)' }}/>
+              <span style={{ fontFamily: cinzel, fontSize: 18, fontWeight: 700, letterSpacing: '0.04em' }}>
+                <span style={{ color: '#f0e8d0' }}>Research</span><span style={{ color: '#c9943a' }}>Desk</span>
+              </span>
+            </div>
+            <p style={{ fontFamily: inter, fontSize: 14.5, color: 'rgba(200,175,130,0.45)', lineHeight: 1.75, margin: '0 0 20px', maxWidth: 220 }}>
+              The smartest way to write medical research — from first draft to final submission, all in one place.
+            </p>
+            <Link href="/login" style={{
+              display: 'inline-flex', alignItems: 'center', gap: 8,
+              background: 'linear-gradient(135deg, #e0b545 0%, #a06808 100%)',
+              color: '#0a0600', padding: '10px 22px', borderRadius: 8,
+              fontSize: 12.5, fontWeight: 800, textDecoration: 'none', fontFamily: inter,
+              letterSpacing: '0.01em',
+            }}>
+              Get Started Free
+            </Link>
+          </div>
+
+          {/* Product links */}
+          <div>
+            <p style={{ fontFamily: cinzel, fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(201,148,58,0.5)', margin: '0 0 18px' }}>Product</p>
+            {[
+              { label: 'Features',        href: '/features' },
+              { label: 'Pricing',         href: '/pricing' },
+              { label: 'For Researchers', href: '/researchers' },
+              { label: 'Login',           href: '/login' },
+            ].map(l => (
+              <div key={l.label} style={{ marginBottom: 12 }}>
+                <Link href={l.href} style={{ fontFamily: inter, fontSize: 15, color: 'rgba(200,175,130,0.55)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#c9943a')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(200,175,130,0.55)')}>{l.label}</Link>
+              </div>
+            ))}
+          </div>
+
+          {/* Legal links */}
+          <div>
+            <p style={{ fontFamily: cinzel, fontSize: 11, fontWeight: 700, letterSpacing: '0.18em', textTransform: 'uppercase', color: 'rgba(201,148,58,0.5)', margin: '0 0 18px' }}>Legal</p>
             {[
               { label: 'Privacy Policy',   href: '/privacy' },
               { label: 'Terms of Service', href: '/terms' },
               { label: 'Contact',          href: '/contact' },
-            ].map(t => (
-              <Link key={t.label} href={t.href} style={{ color: '#4a3820', textDecoration: 'none', transition: 'color 0.2s' }}
-                onMouseEnter={e=>(e.currentTarget.style.color='#c9943a')}
-                onMouseLeave={e=>(e.currentTarget.style.color='#4a3820')}>{t.label}</Link>
+            ].map(l => (
+              <div key={l.label} style={{ marginBottom: 12 }}>
+                <Link href={l.href} style={{ fontFamily: inter, fontSize: 15, color: 'rgba(200,175,130,0.55)', textDecoration: 'none', transition: 'color 0.2s' }}
+                  onMouseEnter={e => (e.currentTarget.style.color = '#c9943a')}
+                  onMouseLeave={e => (e.currentTarget.style.color = 'rgba(200,175,130,0.55)')}>{l.label}</Link>
+              </div>
             ))}
           </div>
+
         </div>
+
+        {/* Bottom bar */}
+        <div style={{ borderTop: '1px solid rgba(201,148,58,0.07)', padding: '18px 56px' }}>
+          <div style={{ maxWidth: 1100, margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <span style={{ fontFamily: cinzel, fontSize: 11, color: 'rgba(201,148,58,0.25)', letterSpacing: '0.08em' }}>© 2026 ResearchDesk. All rights reserved.</span>
+            <span style={{ fontFamily: inter, fontSize: 11, color: 'rgba(200,175,130,0.2)' }}>Built for the medical research community.</span>
+          </div>
+        </div>
+
       </footer>
 
       {/* cursor blink keyframe */}
