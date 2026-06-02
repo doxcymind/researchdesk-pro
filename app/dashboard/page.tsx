@@ -185,9 +185,15 @@ export default function DashboardPage() {
         {loaded && <>
 
           {/* ── CINEMATIC HERO ── */}
-          <div style={{ position: 'relative', marginBottom: 28, padding: 2, borderRadius: 26 }}>
-            {/* rotating conic border */}
-            <div className="hero-ring" style={{ position: 'absolute', inset: 0, borderRadius: 26, zIndex: 0 }} />
+          <div style={{ position: 'relative', marginBottom: 28, padding: 2, borderRadius: 26, overflow: 'hidden' }}>
+            {/* oversized spinning conic — clipped to reveal only the 2px rim */}
+            <div className="hero-ring" style={{
+              position: 'absolute',
+              top: '50%', left: '50%',
+              width: '200%', height: '200%',
+              transform: 'translate(-50%, -50%)',
+              zIndex: 0,
+            }} />
           <div style={{
             position: 'relative', zIndex: 1, padding: '32px 36px',
             borderRadius: 24, overflow: 'hidden',
@@ -284,23 +290,18 @@ export default function DashboardPage() {
           50%       { box-shadow: 0 4px 28px rgba(201,148,58,0.35), 0 0 0 3px rgba(232,184,74,0.15); }
         }
         @keyframes spinRing {
-          from { --ring-angle: 0deg; }
-          to   { --ring-angle: 360deg; }
-        }
-        @property --ring-angle {
-          syntax: '<angle>';
-          initial-value: 0deg;
-          inherits: false;
+          from { transform: translate(-50%, -50%) rotate(0deg); }
+          to   { transform: translate(-50%, -50%) rotate(360deg); }
         }
         .hero-ring {
           background: conic-gradient(
-            from var(--ring-angle),
-            rgba(201,148,58,0.15) 0%,
-            rgba(201,148,58,0.6) 15%,
-            rgba(232,184,74,0.9) 20%,
-            rgba(201,148,58,0.6) 25%,
-            rgba(201,148,58,0.15) 40%,
-            rgba(201,148,58,0.08) 100%
+            from 0deg,
+            rgba(201,148,58,0.08) 0%,
+            rgba(201,148,58,0.5) 12%,
+            rgba(232,184,74,0.95) 18%,
+            rgba(201,148,58,0.5) 24%,
+            rgba(201,148,58,0.08) 38%,
+            rgba(201,148,58,0.04) 100%
           );
           animation: spinRing 5s linear infinite;
         }
