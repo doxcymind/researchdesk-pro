@@ -185,11 +185,13 @@ export default function DashboardPage() {
         {loaded && <>
 
           {/* ── CINEMATIC HERO ── */}
+          <div style={{ position: 'relative', marginBottom: 28, padding: 2, borderRadius: 26 }}>
+            {/* rotating conic border */}
+            <div className="hero-ring" style={{ position: 'absolute', inset: 0, borderRadius: 26, zIndex: 0 }} />
           <div style={{
-            position: 'relative', marginBottom: 28, padding: '32px 36px',
+            position: 'relative', zIndex: 1, padding: '32px 36px',
             borderRadius: 24, overflow: 'hidden',
-            background: 'linear-gradient(135deg, rgba(201,148,58,0.08) 0%, rgba(5,8,15,0.6) 50%, rgba(167,139,250,0.05) 100%)',
-            border: '1px solid rgba(201,148,58,0.15)',
+            background: 'linear-gradient(135deg, rgba(201,148,58,0.08) 0%, rgba(5,8,15,0.95) 50%, rgba(167,139,250,0.05) 100%)',
           }}>
             {/* animated shimmer line */}
             <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 2, background: 'linear-gradient(90deg, transparent, #c9943a, rgba(167,139,250,0.8), transparent)', animation: 'shimmerLine 4s ease-in-out infinite' }} />
@@ -232,6 +234,7 @@ export default function DashboardPage() {
               ))}
             </div>
           </div>
+          </div>{/* end hero-ring wrapper */}
 
           {/* ── WORKFLOW GUIDE — first login only ── */}
           {showWorkflow && (
@@ -279,6 +282,27 @@ export default function DashboardPage() {
         @keyframes shimmerOutline {
           0%, 100% { box-shadow: 0 4px 28px rgba(201,148,58,0.35), 0 0 0 2px rgba(232,184,74,0.6); }
           50%       { box-shadow: 0 4px 28px rgba(201,148,58,0.35), 0 0 0 3px rgba(232,184,74,0.15); }
+        }
+        @keyframes spinRing {
+          from { --ring-angle: 0deg; }
+          to   { --ring-angle: 360deg; }
+        }
+        @property --ring-angle {
+          syntax: '<angle>';
+          initial-value: 0deg;
+          inherits: false;
+        }
+        .hero-ring {
+          background: conic-gradient(
+            from var(--ring-angle),
+            #c9943a 0%,
+            rgba(167,139,250,0.9) 20%,
+            #34d399 40%,
+            #60a5fa 60%,
+            rgba(249,115,22,0.9) 80%,
+            #c9943a 100%
+          );
+          animation: spinRing 4s linear infinite;
         }
         .skel {
           background: rgba(255,255,255,0.07);
