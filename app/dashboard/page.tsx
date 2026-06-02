@@ -202,7 +202,6 @@ export default function DashboardPage() {
             <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between' }}>
               <div>
 <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                  <span className="spin-symbol" style={{ fontSize: 20, color: 'rgba(201,148,58,0.5)' }}>◎</span>
                   <h1 style={{ fontSize: 38, fontWeight: 600, color: '#f0e8d0', margin: 0, fontFamily: "var(--font-cinzel),'Cormorant Garamond',Georgia,serif", lineHeight: 1.1 }}>
                     {greeting}{displayName ? ', ' : ''}<span style={{ color: '#c9943a' }}>{displayName}</span>
                   </h1>
