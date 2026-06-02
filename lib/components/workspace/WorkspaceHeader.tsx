@@ -107,7 +107,7 @@ export default function WorkspaceHeader({ title, studyType, onExport, onShare, o
                 fontSize: 'clamp(16px, 3vw, 24px)', fontWeight: 600,
                 color: '#f0e8d0', letterSpacing: '0.01em', margin: 0,
                 fontFamily: 'var(--font-cinzel), Cormorant Garamond, Georgia, serif',
-                overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+                wordBreak: 'break-word',
                 cursor: onRename ? 'text' : 'default',
               }}
             >

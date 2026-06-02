@@ -5,14 +5,32 @@ import { isScholarServer } from '@/lib/check-subscription'
 import { createClient } from '@supabase/supabase-js'
 import { extractText } from 'unpdf'
 
+function makeSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+}
+
+async function getCitationsContext(userId: string, projectId: number): Promise<string> {
+  if (!projectId) return ''
+  try {
+    const supabase = makeSupabaseAdmin()
+    const { data: row } = await supabase.from('project_sections')
+      .select('content').eq('project_id', projectId).eq('user_id', userId).eq('section', '__citations__').single()
+    if (!row?.content) return ''
+    const citations: any[] = JSON.parse(row.content)
+    if (!citations.length) return ''
+    const list = citations.map((c, i) => `${i + 1}. ${c.text || c.formatted || ''}`).filter(s => s.trim().length > 3).join('\n')
+    return list ? `\n\nThe researcher has saved the following references for this project:\n${list}` : ''
+  } catch { return '' }
+}
+
 async function getUploadContext(userId: string, projectId: number): Promise<string> {
   if (!projectId) return ''
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    )
+    const supabase = makeSupabaseAdmin()
     const { data: uploads } = await supabase
       .from('uploads').select('file_name, file_path')
       .eq('project_id', projectId).eq('user_id', userId)
@@ -56,16 +74,19 @@ export async function POST(req: Request) {
     const safeTopic    = String(topic).slice(0, 500)
     const safeContent  = String(content).slice(0, 8000)
 
-    // Fetch uploaded reference PDFs if available
-    const uploadContext = projectId ? await getUploadContext(user.id, Number(projectId)) : ''
-    const uploadBlock   = uploadContext
+    // Fetch uploaded PDFs + saved citations in parallel
+    const [uploadContext, citationsContext] = await Promise.all([
+      projectId ? getUploadContext(user.id, Number(projectId)) : Promise.resolve(''),
+      projectId ? getCitationsContext(user.id, Number(projectId)) : Promise.resolve(''),
+    ])
+    const uploadBlock = uploadContext
       ? `\n\nThe researcher has uploaded the following reference documents for this project. Use them to give more specific, grounded feedback:\n\n${uploadContext}`
       : ''
 
     const raw = await geminiChat(
       `You are an expert academic mentor and senior medical journal editor. Your role is NOT to write for the researcher — it is to TEACH them to write better. You give honest, specific, educational feedback that helps the researcher understand what to improve and why. You ask guiding questions to make them think. You explain the standards journals expect. Always respond with valid JSON only.`,
 
-      `You are mentoring a researcher writing the "${safeSection}" section of their medical manuscript titled "${safeTopic}".${uploadBlock}
+      `You are mentoring a researcher writing the "${safeSection}" section of their medical manuscript titled "${safeTopic}".${uploadBlock}${citationsContext}
 
 Read what they have written and give mentor-style feedback. Your feedback should:
 - Teach them WHY something is wrong, not just that it is wrong

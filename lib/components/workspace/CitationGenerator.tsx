@@ -82,19 +82,24 @@ export default function CitationGenerator({ projectId }: { projectId?: number })
     load()
   }, [projectId])
 
-  // Auto-save citations to DB
+  // Auto-save citations to DB (including empty array — so removals persist correctly)
   useEffect(() => {
-    if (!projectId || citations.length === 0) return
+    if (!projectId) return
     if (saveTimeout.current) clearTimeout(saveTimeout.current)
     saveTimeout.current = setTimeout(async () => {
       setSaving(true)
       const { data: { session } } = await supabase.auth.getSession()
       const user = session?.user
       if (!user) { setSaving(false); return }
-      await supabase.from('project_sections').upsert(
-        { project_id: projectId, user_id: user.id, section: '__citations__', content: JSON.stringify(citations) },
-        { onConflict: 'project_id,user_id,section' }
-      )
+      const { data: existing } = await supabase.from('project_sections')
+        .select('id').eq('project_id', projectId).eq('user_id', user.id).eq('section', '__citations__').single()
+      if (existing?.id) {
+        await supabase.from('project_sections')
+          .update({ content: JSON.stringify(citations) }).eq('id', existing.id).eq('user_id', user.id)
+      } else if (citations.length > 0) {
+        await supabase.from('project_sections')
+          .insert({ project_id: projectId, user_id: user.id, section: '__citations__', content: JSON.stringify(citations) })
+      }
       setSaving(false)
     }, 800)
   }, [citations, projectId])
@@ -102,6 +107,7 @@ export default function CitationGenerator({ projectId }: { projectId?: number })
   // Auto-load library when switching to zotero tab
   useEffect(() => {
     if (tab === 'zotero' && zoteroUserId && zoteroApiKey && collections.length === 0) fetchCollections()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab, zoteroUserId, zoteroApiKey])
 
   const fetchCollections = async () => {

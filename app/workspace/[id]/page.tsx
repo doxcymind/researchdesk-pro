@@ -21,6 +21,7 @@ import AuthorsPanel from '../../../lib/components/workspace/AuthorsPanel'
 import ClinicalTrialsPanel from '../../../lib/components/workspace/ClinicalTrialsPanel'
 import DOIResolverPanel from '../../../lib/components/workspace/DOIResolverPanel'
 import PlagiarismPanel from '../../../lib/components/workspace/PlagiarismPanel'
+import LiteratureSearch from '../../../lib/components/workspace/LiteratureSearch'
 import UpgradeModal from '../../../lib/components/workspace/UpgradeModal'
 import { useSubscription } from '@/lib/hooks/useSubscription'
 
@@ -52,6 +53,7 @@ export default function WorkspacePage() {
 
   const [loading, setLoading] = useState(true)
   const [showScrollTop, setShowScrollTop] = useState(false)
+  const [sectionWordCounts, setSectionWordCounts] = useState<Record<string, number>>({})
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const { isScholar } = useSubscription()
@@ -103,13 +105,15 @@ export default function WorkspacePage() {
   const manuscriptSections = journalSections
     ?? (project ? (MANUSCRIPT_SECTIONS[project.study_type] ?? DEFAULT_SECTIONS) : DEFAULT_SECTIONS)
 
-  const TOOL_SECTIONS = ['Authors', 'AI Assistant', 'Uploads', 'Clinical Trials', 'DOI Resolver', 'Journal Selector', 'Submission Tracker', 'Cover Letter']
+  const LITERATURE_STUDY_TYPES = new Set(['Review Article', 'Systematic Review', 'Meta-Analysis', 'Thesis'])
+  const showLiterature = project && LITERATURE_STUDY_TYPES.has(project.study_type)
+  const TOOL_SECTIONS = ['Authors', 'AI Assistant', 'Uploads', 'Clinical Trials', 'DOI Resolver', 'Journal Selector', 'Submission Tracker', 'Cover Letter', ...(showLiterature ? ['Literature Search'] : [])]
 
   const sections = ['Overview', ...manuscriptSections, ...TOOL_SECTIONS]
 
   useEffect(() => {
     fetchProject()
-  }, [])
+  }, [params.id])
 
   // On browser close: stash content to localStorage as emergency backup
   // (async Supabase save cannot complete in beforeunload — browsers block it)
@@ -131,9 +135,8 @@ export default function WorkspacePage() {
     const draft = localStorage.getItem(key)
     if (draft && draft !== content) {
       setContent(draft)
-      localStorage.removeItem(key)
-      // Persist the recovered draft immediately
-      saveContent(draft)
+      // Remove from localStorage ONLY after DB save succeeds — prevents silent data loss
+      saveContent(draft).then(() => localStorage.removeItem(key))
     }
   }, [project?.id, selectedSection])
 
@@ -170,6 +173,23 @@ export default function WorkspacePage() {
       }
 
       setProject(data)
+
+      // Load word counts for all sections (for sidebar glow)
+      const { data: allSections } = await supabase
+        .from('project_sections')
+        .select('section, content')
+        .eq('project_id', data.id)
+        .eq('user_id', user.id)
+      if (allSections) {
+        const wc: Record<string, number> = {}
+        for (const row of allSections) {
+          if (!row.section.startsWith('__')) {
+            const words = row.content?.trim() ? row.content.trim().split(/\s+/).length : 0
+            if (words > 0) wc[row.section] = words
+          }
+        }
+        setSectionWordCounts(wc)
+      }
     } catch (error) {
       console.error(error)
       router.push('/projects')
@@ -256,6 +276,9 @@ export default function WorkspacePage() {
   const handleContentChange = (value: string) => {
     setContent(value)
     contentRef2.current = value  // keep ref in sync for beforeunload
+    // Update sidebar glow live
+    const wc = value.trim() ? value.trim().split(/\s+/).length : 0
+    setSectionWordCounts(prev => ({ ...prev, [selectedSection]: wc }))
 
     if (autosaveTimeout.current) {
       clearTimeout(autosaveTimeout.current)
@@ -319,7 +342,7 @@ export default function WorkspacePage() {
       const { data: { session } } = await supabase.auth.getSession()
       const user = session?.user
       if (!user) return
-      const content = keywords.join('; ')
+      const keywordsContent = keywords.join('; ')
       const { data: existing } = await supabase
         .from('project_sections')
         .select('id')
@@ -328,9 +351,9 @@ export default function WorkspacePage() {
         .eq('user_id', user.id)
         .single()
       if (existing) {
-        await supabase.from('project_sections').update({ content }).eq('id', existing.id).eq('user_id', user.id)
+        await supabase.from('project_sections').update({ content: keywordsContent }).eq('id', existing.id).eq('user_id', user.id)
       } else {
-        await supabase.from('project_sections').insert({ project_id: project.id, user_id: user.id, section: '__keywords__', content })
+        await supabase.from('project_sections').insert({ project_id: project.id, user_id: user.id, section: '__keywords__', content: keywordsContent })
       }
     } catch {}
   }
@@ -406,7 +429,7 @@ export default function WorkspacePage() {
     })
   }
 
-  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'References', 'Journal Selector', 'Submission Tracker', 'Cover Letter', 'AI Assistant', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check'])
+  const NON_EDITOR = new Set(['Overview', 'Authors', 'Uploads', 'References', 'Journal Selector', 'Submission Tracker', 'Cover Letter', 'AI Assistant', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check', 'Literature Search'])
   const isEditorSection = !NON_EDITOR.has(selectedSection)
 
   return (
@@ -417,6 +440,7 @@ export default function WorkspacePage() {
         setSelectedSection={setSelectedSection}
         onExit={() => router.push('/dashboard')}
         onDelete={deleteProject}
+        sectionWordCounts={sectionWordCounts}
       />
 
       <section
@@ -442,7 +466,7 @@ export default function WorkspacePage() {
 
             <div style={{ padding: '4px 0', minHeight: 500 }}>
               {selectedSection === 'Overview' && (
-                <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} onNavigate={setSelectedSection} />
+                <OverviewPanel projectId={project.id} studyType={project.study_type} manuscriptSections={manuscriptSections} onNavigate={setSelectedSection} projectTitle={project.title} />
               )}
 
               {isEditorSection && (
@@ -519,6 +543,14 @@ export default function WorkspacePage() {
 
               {selectedSection === 'DOI Resolver' && (
                 <DOIResolverPanel />
+              )}
+
+              {selectedSection === 'Literature Search' && (
+                <LiteratureSearch
+                  projectId={project.id}
+                  projectTitle={project.title}
+                  studyType={project.study_type}
+                />
               )}
 
 

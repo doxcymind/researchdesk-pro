@@ -2,8 +2,15 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '@/lib/supabase'
+import { apiFetch } from '@/lib/api-fetch'
 
-interface Props { projectId: number; studyType?: string; manuscriptSections?: string[]; onNavigate?: (section: string) => void }
+interface Props { projectId: number; studyType?: string; manuscriptSections?: string[]; onNavigate?: (section: string) => void; projectTitle?: string }
+
+interface Article {
+  id: string; title: string; authors: string; journal: string
+  date: string; doi: string | null; url: string; pubtype: string
+  volume: string; issue: string; pages: string
+}
 interface ChecklistItem { id: string; item: string; completed: boolean }
 interface SectionDraft { section: string; content: string }
 
@@ -45,13 +52,24 @@ const STATUS_LABEL: Record<string, string> = {
   empty: 'Not started', started: 'Started', good: 'In progress', done: 'Complete'
 }
 
-export default function OverviewPanel({ projectId, studyType, manuscriptSections, onNavigate }: Props) {
+const LITERATURE_TYPES = new Set(['Review Article', 'Systematic Review', 'Meta-Analysis', 'Thesis'])
+
+export default function OverviewPanel({ projectId, studyType, manuscriptSections, onNavigate, projectTitle }: Props) {
   const [documents, setDocuments]   = useState(0)
   const [activities, setActivities] = useState<any[]>([])
   const [checklist, setChecklist]   = useState<ChecklistItem[]>([])
   const [drafts, setDrafts]         = useState<SectionDraft[]>([])
   const [animatedProgress, setAnimatedProgress] = useState(0)
   const initRef = useRef<number | null>(null)
+
+  // Literature search state
+  const [litArticles, setLitArticles]   = useState<Article[]>([])
+  const [litLoading, setLitLoading]     = useState(false)
+  const [litQuery, setLitQuery]         = useState(projectTitle || '')
+  const [litSavedIds, setLitSavedIds]   = useState<Set<string>>(new Set())
+  const [litAddingId, setLitAddingId]   = useState<string | null>(null)
+  const showLit = LITERATURE_TYPES.has(studyType || '')
+  const litDebounce = useRef<NodeJS.Timeout | null>(null)
 
   const editorSections = (manuscriptSections ?? []).filter(s => s !== 'Plagiarism Check')
 
@@ -60,6 +78,71 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
     initRef.current = projectId
     fetchAll()
   }, [projectId])
+
+  useEffect(() => {
+    if (showLit && projectTitle) {
+      // Strip subtitle after dash/colon, then take first 8 words for a focused PubMed query
+      const mainTitle = projectTitle.split(/\s*[-:]\s*/)[0].trim()
+      const shortQ = mainTitle.split(/\s+/).slice(0, 8).join(' ')
+      setLitQuery(shortQ)
+      fetchLiterature(shortQ)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showLit, projectTitle])
+
+  const fetchLiterature = async (q: string) => {
+    if (!q.trim()) return
+    setLitLoading(true)
+    try {
+      const res = await apiFetch(`/api/pubmed?q=${encodeURIComponent(q)}&max=20`)
+      const data = await res.json()
+      setLitArticles(data.articles || [])
+    } catch { setLitArticles([]) }
+    finally { setLitLoading(false) }
+  }
+
+  const handleLitSearch = (val: string) => {
+    setLitQuery(val)
+    if (litDebounce.current) clearTimeout(litDebounce.current)
+    litDebounce.current = setTimeout(() => { if (val.trim()) fetchLiterature(val) }, 600)
+  }
+
+  const addToReferences = async (article: Article) => {
+    setLitAddingId(article.id)
+    const { data: { session } } = await supabase.auth.getSession()
+    const user = session?.user
+    if (!user) { setLitAddingId(null); return }
+    const year = article.date ? article.date.split(' ')[0] : ''
+    const volIssue = article.volume ? `${article.volume}${article.issue ? `(${article.issue})` : ''}` : ''
+    const formatted = `${article.authors}. ${article.title}. ${article.journal}. ${year}${volIssue ? `;${volIssue}` : ''}${article.pages ? `:${article.pages}` : ''}${article.doi ? `. doi:${article.doi}` : ''}.`
+    const citation = {
+      id: `pm_${article.id}`,
+      text: formatted,
+      style: 'Vancouver',
+      input: article.title,
+      type: 'journal', authors: article.authors, title: article.title,
+      journal: article.journal, year, doi: article.doi || '', url: article.url,
+    }
+
+    // Use explicit select → insert/update (same pattern as saveContent — proven to work with RLS)
+    const { data: existing_row } = await supabase.from('project_sections')
+      .select('id, content').eq('project_id', projectId).eq('user_id', user.id).eq('section', '__citations__').single()
+
+    let existing: any[] = []
+    try { existing = JSON.parse(existing_row?.content || '[]') } catch { existing = [] }
+    const updated = [...existing.filter((c: any) => c.id !== citation.id), citation]
+
+    if (existing_row?.id) {
+      await supabase.from('project_sections')
+        .update({ content: JSON.stringify(updated) })
+        .eq('id', existing_row.id).eq('user_id', user.id)
+    } else {
+      await supabase.from('project_sections')
+        .insert({ project_id: projectId, user_id: user.id, section: '__citations__', content: JSON.stringify(updated) })
+    }
+    setLitSavedIds(prev => new Set([...prev, article.id]))
+    setLitAddingId(null)
+  }
 
   const fetchAll = async () => {
     try {
@@ -231,123 +314,155 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
         </div>
       </div>
 
-      {/* ── SECTION PROGRESS ── */}
-      <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
-        <div style={{ padding: '16px 22px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>✎</div>
-            <div>
-              <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Section Progress</h3>
-              <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Word count per section · click to open</p>
-            </div>
-          </div>
-          <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.25)' }}>{totalWords.toLocaleString()} total words</span>
-        </div>
-        <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 6 }}>
-          {sectionsWithStatus.map(s => (
-            <div key={s.section} onClick={() => onNavigate?.(s.section)}
-              style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 10px', borderRadius: 10, background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.05)', cursor: onNavigate ? 'pointer' : 'default', transition: 'all 0.15s' }}
-              onMouseEnter={e => { if (onNavigate) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.035)' }}
-              onMouseLeave={e => { if (onNavigate) (e.currentTarget as HTMLElement).style.background = 'rgba(255,255,255,0.015)' }}>
-              <span style={{ fontSize: 13, width: 18, textAlign: 'center', flexShrink: 0 }}>{SECTION_ICONS[s.section] || '◦'}</span>
-              <span style={{ fontSize: 12, color: s.status === 'empty' ? 'rgba(240,232,208,0.3)' : 'rgba(240,232,208,0.75)', width: 140, flexShrink: 0, fontWeight: s.status !== 'empty' ? 500 : 400 }}>{s.section}</span>
-              <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${s.pct}%`, borderRadius: 3, background: STATUS_COLOR[s.status], transition: 'width 0.8s ease', boxShadow: s.status === 'done' ? '0 0 8px rgba(52,211,153,0.4)' : 'none' }} />
+
+      {/* 2-col grid: Literature left + (Section Progress + Checklist + Activity) right — review types only */}
+      {/* Non-review: Checklist + Activity side by side */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, alignItems: 'start' }}>
+
+        {/* LEFT: Literature (review types) OR Checklist (others) */}
+        {showLit ? (
+          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div>
+                <p style={{ fontSize: 10, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.15em', margin: '0 0 2px', fontWeight: 700 }}>✦ Suggested Literature</p>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>PubMed Articles</h3>
               </div>
-              <span style={{ fontSize: 11, color: STATUS_COLOR[s.status], fontWeight: 600, width: 72, textAlign: 'right', flexShrink: 0 }}>
-                {s.status === 'empty' ? '—' : `${s.wc} / ${s.target}`}
-              </span>
-              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 20, background: `${STATUS_COLOR[s.status]}18`, color: STATUS_COLOR[s.status], border: `1px solid ${STATUS_COLOR[s.status]}33`, flexShrink: 0, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                {STATUS_LABEL[s.status]}
+              <span style={{ fontSize: 11, color: litLoading ? '#c9943a' : 'rgba(240,232,208,0.2)', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                {litLoading ? 'Searching…' : litArticles.length > 0 ? `${litArticles.length} found` : ''}
               </span>
             </div>
-          ))}
-        </div>
-      </div>
 
-      {/* ── BOTTOM ROW: checklist + activity ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
-
-        {/* Checklist */}
-        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(201,148,58,0.15)', borderRadius: 18, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(201,148,58,0.1)', background: 'linear-gradient(90deg,rgba(201,148,58,0.05),transparent)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, color: '#c9943a' }}>✦</span>
-              <div>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Publication Checklist</h3>
-                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Tick off as you complete each section</p>
+            {/* Search bar */}
+            <div style={{ padding: '12px 16px 0' }}>
+              <div style={{ position: 'relative' }}>
+                <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 12, color: 'rgba(240,232,208,0.2)', pointerEvents: 'none' }}>🔍</span>
+                <input value={litQuery} onChange={e => handleLitSearch(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') fetchLiterature(litQuery) }}
+                  placeholder="Refine search…"
+                  style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px 8px 32px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 9, color: '#f0e8d0', fontSize: 12, outline: 'none', fontFamily: 'inherit' }}
+                  onFocus={e => (e.target.style.borderColor = 'rgba(201,148,58,0.35)')}
+                  onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.08)')}
+                />
               </div>
             </div>
-            <span style={{ fontSize: 11, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
-              background: checksCompleted === totalChecks && totalChecks > 0 ? 'rgba(52,211,153,0.12)' : 'rgba(201,148,58,0.08)',
-              border: `1px solid ${checksCompleted === totalChecks && totalChecks > 0 ? 'rgba(52,211,153,0.3)' : 'rgba(201,148,58,0.2)'}`,
-              color: checksCompleted === totalChecks && totalChecks > 0 ? '#34d399' : '#c9943a' }}>
-              {checksCompleted === totalChecks && totalChecks > 0 ? '✓ All done' : `${checksCompleted} / ${totalChecks}`}
-            </span>
-          </div>
-          <div style={{ padding: '10px 12px', display: 'flex', flexDirection: 'column', gap: 5 }}>
-            {checklist.length === 0 ? (
-              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', textAlign: 'center', padding: '16px 0', margin: 0 }}>Loading checklist…</p>
-            ) : checklist.map(item => (
-              <button key={item.id} onClick={() => toggleItem(item.id, item.completed)}
-                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 10, cursor: 'pointer', border: 'none', textAlign: 'left', fontFamily: 'inherit',
-                  background: item.completed ? 'rgba(52,211,153,0.06)' : 'rgba(255,255,255,0.02)',
-                  outline: 'none', transition: 'all 0.15s' }}>
-                <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  background: item.completed ? 'linear-gradient(135deg,#34d399,#059669)' : 'transparent',
-                  border: item.completed ? 'none' : '1.5px solid rgba(201,148,58,0.3)',
-                  boxShadow: item.completed ? '0 0 10px rgba(52,211,153,0.3)' : 'none', transition: 'all 0.15s' }}>
-                  {item.completed && <span style={{ fontSize: 10, color: '#fff', fontWeight: 900 }}>✓</span>}
-                </div>
-                <span style={{ fontSize: 12, color: item.completed ? 'rgba(240,232,208,0.3)' : 'rgba(240,232,208,0.7)', textDecoration: item.completed ? 'line-through' : 'none', flex: 1 }}>{item.item}</span>
-              </button>
-            ))}
-          </div>
-          {/* mini progress bar */}
-          {totalChecks > 0 && (
-            <div style={{ padding: '0 12px 12px', display: 'flex', gap: 3 }}>
-              {Array.from({ length: totalChecks }).map((_, i) => (
-                <div key={i} style={{ flex: 1, height: 3, borderRadius: 2,
-                  background: i < checksCompleted ? scoreColor : 'rgba(255,255,255,0.07)',
-                  transition: 'background 0.4s' }} />
-              ))}
-            </div>
-          )}
-        </div>
 
-        {/* Activity feed */}
-        <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
-          <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <span style={{ fontSize: 14, color: 'rgba(240,232,208,0.4)' }}>◎</span>
-              <div>
-                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Activity Log</h3>
-                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Workspace timeline</p>
+            {/* Skeleton */}
+            {litLoading && (
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+                {[1,2,3,4].map(i => (
+                  <div key={i} style={{ height: 72, borderRadius: 10, background: 'rgba(255,255,255,0.03)', animation: 'litPulse 1.5s ease-in-out infinite', animationDelay: `${i*0.1}s` }} />
+                ))}
               </div>
-            </div>
-            {activities.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <div style={{ width: 5, height: 5, borderRadius: '50%', background: '#34d399', boxShadow: '0 0 5px #34d399' }} />
-                <span style={{ fontSize: 10, color: 'rgba(52,211,153,0.6)', letterSpacing: '0.1em', textTransform: 'uppercase' }}>Live</span>
+            )}
+
+            {/* Articles */}
+            {!litLoading && (
+              <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 8, maxHeight: 520, overflowY: 'auto' }}>
+                {litArticles.length === 0 && (
+                  <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', textAlign: 'center', padding: '24px 0', margin: 0, fontStyle: 'italic' }}>No articles found — try different keywords</p>
+                )}
+                {litArticles.map(article => {
+                  const saved = litSavedIds.has(article.id)
+                  const adding = litAddingId === article.id
+                  return (
+                    <div key={article.id} style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.06)', borderRadius: 10, padding: '12px 14px', transition: 'border-color 0.15s' }}
+                      onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(201,148,58,0.2)')}
+                      onMouseLeave={e => (e.currentTarget.style.borderColor = 'rgba(255,255,255,0.06)')}>
+                      {/* Title — clickable link to PubMed */}
+                      <a href={article.url} target="_blank" rel="noopener noreferrer"
+                        style={{ fontSize: 12, fontWeight: 600, color: '#e8c878', textDecoration: 'underline', textDecorationColor: 'rgba(232,184,120,0.35)', lineHeight: 1.5, display: 'block', marginBottom: 4 }}>
+                        {article.title}
+                      </a>
+                      {/* Authors + journal */}
+                      <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.4)', margin: '0 0 4px', lineHeight: 1.4 }}>{article.authors}</p>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 9 }}>
+                        <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', fontStyle: 'italic' }}>{article.journal}</span>
+                        {article.date && <span style={{ fontSize: 10, color: 'rgba(240,232,208,0.22)' }}>· {article.date}</span>}
+                        {article.pubtype && (
+                          <span style={{ fontSize: 9, fontWeight: 700, color: '#60a5fa', background: 'rgba(96,165,250,0.1)', border: '1px solid rgba(96,165,250,0.15)', padding: '1px 5px', borderRadius: 5 }}>
+                            {article.pubtype.split(',')[0].trim()}
+                          </span>
+                        )}
+                      </div>
+                      {/* Action row */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        <button onClick={() => !saved && addToReferences(article)} disabled={adding || saved}
+                          style={{ padding: '4px 11px', borderRadius: 6, fontSize: 10, fontWeight: 700, cursor: saved ? 'default' : 'pointer', fontFamily: 'inherit',
+                            background: saved ? 'rgba(52,211,153,0.1)' : 'rgba(201,148,58,0.1)',
+                            border: `1px solid ${saved ? 'rgba(52,211,153,0.25)' : 'rgba(201,148,58,0.25)'}`,
+                            color: saved ? '#34d399' : '#c9943a' }}>
+                          {saved ? '✓ Added to Refs' : adding ? 'Adding…' : '+ Add to References'}
+                        </button>
+                        <a href={article.url} target="_blank" rel="noopener noreferrer"
+                          style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, color: 'rgba(96,165,250,0.8)', background: 'rgba(96,165,250,0.07)', border: '1px solid rgba(96,165,250,0.2)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                          PubMed ↗
+                        </a>
+                        {article.doi && (
+                          <a href={`https://doi.org/${article.doi}`} target="_blank" rel="noopener noreferrer"
+                            style={{ padding: '4px 10px', borderRadius: 6, fontSize: 10, fontWeight: 600, color: 'rgba(240,232,208,0.4)', background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.08)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 3 }}>
+                            DOI ↗
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )}
           </div>
-          <div style={{ padding: '8px 12px 10px', display: 'flex', flexDirection: 'column', gap: 2 }}>
-            {activities.length === 0 ? (
-              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', textAlign: 'center', padding: '20px 0', margin: 0, fontStyle: 'italic' }}>No activity yet — start writing!</p>
-            ) : activities.map((a, i) => (
-              <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 8px', borderRadius: 9, background: i === 0 ? 'rgba(201,148,58,0.04)' : 'transparent' }}>
-                <div style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12,
-                  background: i === 0 ? 'rgba(201,148,58,0.12)' : 'rgba(255,255,255,0.03)',
-                  border: i === 0 ? '1px solid rgba(201,148,58,0.2)' : '1px solid rgba(255,255,255,0.05)',
-                  color: i === 0 ? '#c9943a' : 'rgba(240,232,208,0.3)' }}>
-                  {a.action.startsWith('Saved') ? '💾' : a.action.startsWith('AI') ? '✦' : a.action.startsWith('Upload') ? '↑' : a.action.startsWith('Export') ? '⬇' : '·'}
-                </div>
-                <span style={{ flex: 1, fontSize: 12, color: i === 0 ? 'rgba(240,232,208,0.8)' : 'rgba(240,232,208,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.action}</span>
-                <span style={{ fontSize: 10, color: 'rgba(240,232,208,0.2)', whiteSpace: 'nowrap', background: 'rgba(255,255,255,0.03)', padding: '2px 8px', borderRadius: 20 }}>{relTime(a.created_at)}</span>
+        ) : (
+          /* Activity feed for non-review types (left col) */
+          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
+            <div style={{ padding: '16px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 26, height: 26, borderRadius: 7, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}>◎</div>
+              <div>
+                <h3 style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Recent Activity</h3>
+                <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Latest edits & events</p>
               </div>
-            ))}
+            </div>
+            <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {activities.length === 0 ? (
+                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', textAlign: 'center', padding: '16px 0', margin: 0, fontStyle: 'italic' }}>No activity yet — start writing!</p>
+              ) : activities.map((a, i) => (
+                <div key={a.id ?? `${a.created_at}-${i}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(201,148,58,0.5)', marginTop: 5, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.6)', margin: 0, lineHeight: 1.5 }}>{a.description || a.action || 'Updated project'}</p>
+                    <p style={{ fontSize: 10, color: 'rgba(240,232,208,0.25)', margin: '2px 0 0' }}>{relTime(a.created_at)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
+        )}
+
+        {/* RIGHT: Section Progress (review only) + Checklist (review only) + Activity */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+
+          {/* Activity feed */}
+          <div style={{ background: 'rgba(255,255,255,0.015)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 18, overflow: 'hidden' }}>
+            <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', gap: 8 }}>
+              <div style={{ width: 24, height: 24, borderRadius: 6, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>◎</div>
+              <div>
+                <h3 style={{ fontSize: 12, fontWeight: 700, color: '#f0e8d0', margin: 0 }}>Recent Activity</h3>
+                <p style={{ fontSize: 10, color: 'rgba(240,232,208,0.3)', margin: 0 }}>Latest edits & events</p>
+              </div>
+            </div>
+            <div style={{ padding: '10px 14px', display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {activities.length === 0 ? (
+                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.2)', textAlign: 'center', padding: '16px 0', margin: 0, fontStyle: 'italic' }}>No activity yet — start writing!</p>
+              ) : activities.map((a, i) => (
+                <div key={a.id ?? `${a.created_at}-${i}`} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                  <div style={{ width: 6, height: 6, borderRadius: '50%', background: 'rgba(201,148,58,0.5)', marginTop: 5, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.6)', margin: 0, lineHeight: 1.5 }}>{a.description || a.action || 'Updated project'}</p>
+                    <p style={{ fontSize: 10, color: 'rgba(240,232,208,0.25)', margin: '2px 0 0' }}>{relTime(a.created_at)}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
         </div>
       </div>
 
@@ -355,6 +470,9 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
         @media (max-width: 900px) {
           .overview-top { grid-template-columns: 1fr !important; }
           .overview-bottom { grid-template-columns: 1fr !important; }
+        }
+        @keyframes litPulse {
+          0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; }
         }
       `}</style>
     </div>

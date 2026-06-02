@@ -80,8 +80,10 @@ INSTRUCTIONS:
           const annotated = groqData.choices?.[0]?.message?.content || ''
           if (annotated) {
             // Parse annotated text back into contentMap sections
+            // Regex defined outside exec loop so lastIndex resets cleanly each call
             const sectionRegex = /## (.+?)\n([\s\S]*?)(?=## |\s*$)/g
             let match
+            sectionRegex.lastIndex = 0
             while ((match = sectionRegex.exec(annotated)) !== null) {
               const sectionName = match[1].trim()
               const sectionContent = match[2].trim()
@@ -267,7 +269,7 @@ INSTRUCTIONS:
       status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'Content-Disposition': `attachment; filename="${projectTitle.replace(/\s+/g, '_')}_manuscript.docx"`,
+        'Content-Disposition': `attachment; filename="${(projectTitle ?? 'manuscript').replace(/\s+/g, '_')}_manuscript.docx"`,
       },
     })
   } catch (e) {

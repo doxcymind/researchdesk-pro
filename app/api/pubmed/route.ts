@@ -15,10 +15,16 @@ const TOPICS = [
 
 export async function GET(req: NextRequest) {
   try {
-    const topic = TOPICS[Math.floor(Date.now() / (1000 * 60 * 10)) % TOPICS.length] // rotate every 10 min
+    const { searchParams } = new URL(req.url)
+    const customQuery = searchParams.get('q')
+    const retmax = searchParams.get('max') || '20'
 
-    // Step 1 — get 12 recent PubMed IDs
-    const searchUrl = `${BASE}/esearch.fcgi?db=pubmed&retmode=json&retmax=12&sort=pub+date&term=${encodeURIComponent(topic)}&${PARAMS}`
+    const topic = customQuery
+      ? customQuery
+      : TOPICS[Math.floor(Date.now() / (1000 * 60 * 10)) % TOPICS.length]
+
+    // Step 1 — get PubMed IDs
+    const searchUrl = `${BASE}/esearch.fcgi?db=pubmed&retmode=json&retmax=${retmax}&sort=relevance&term=${encodeURIComponent(topic)}&${PARAMS}`
     const searchRes = await fetch(searchUrl, { next: { revalidate: 600 } }) // cache 10 min
     if (!searchRes.ok) throw new Error('PubMed search failed')
     const searchData = await searchRes.json()
@@ -50,6 +56,9 @@ export async function GET(req: NextRequest) {
           doi: item.elocationid?.replace('doi: ', '') || null,
           url: `https://pubmed.ncbi.nlm.nih.gov/${id}/`,
           pubtype: (item.pubtype || []).join(', '),
+          volume: item.volume || '',
+          issue: item.issue || '',
+          pages: item.pages || '',
         }
       })
       .filter(Boolean)

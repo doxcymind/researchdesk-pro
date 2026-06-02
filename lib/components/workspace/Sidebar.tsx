@@ -9,6 +9,7 @@ interface SidebarProps {
   setSelectedSection: (section: string) => void
   onExit: () => void
   onDelete?: () => void
+  sectionWordCounts?: Record<string, number>
 }
 
 const SECTION_ICONS: Record<string, string> = {
@@ -37,11 +38,18 @@ const SECTION_ICONS: Record<string, string> = {
   'DOI Resolver':         '🔍',
   'Zotero':               'Z',
   'Plagiarism Check':     '⚑',
+  'Literature Search':    '🔬',
 }
 
-const TOOL_ITEMS = ['Authors','AI Assistant','Uploads','Clinical Trials','DOI Resolver','Journal Selector','Submission Tracker','Cover Letter']
+const TOOL_ITEMS = ['Authors','AI Assistant','Uploads','Clinical Trials','DOI Resolver','Journal Selector','Submission Tracker','Cover Letter','Literature Search']
 
-export default function Sidebar({ sections, selectedSection, setSelectedSection, onExit, onDelete }: SidebarProps) {
+const WORD_TARGETS: Record<string, number> = {
+  Abstract: 250, Introduction: 500, 'Case Presentation': 600, 'Case Presentations': 800,
+  Methods: 600, Results: 500, Discussion: 700, Conclusion: 250,
+  References: 300, 'Literature Review': 1000, Body: 400, Recommendations: 300,
+}
+
+export default function Sidebar({ sections, selectedSection, setSelectedSection, onExit, onDelete, sectionWordCounts = {} }: SidebarProps) {
   const [showConfirm, setShowConfirm] = useState(false)
 
   // Arrow key navigation
@@ -87,21 +95,28 @@ export default function Sidebar({ sections, selectedSection, setSelectedSection,
               </p>
               {(group.label === 'MANUSCRIPT' ? ['Overview', ...group.items] : group.items).map((section) => {
                 const active = selectedSection === section
+                const wc = sectionWordCounts[section] ?? 0
+                const target = WORD_TARGETS[section] ?? 400
+                const fillPct = Math.min(100, Math.round((wc / target) * 100))
+                const fillColor = fillPct >= 80 ? 'rgba(52,211,153,0.18)' : fillPct > 0 ? 'rgba(201,148,58,0.16)' : 'transparent'
+                const fillBg = fillPct > 0 && !active
+                  ? `linear-gradient(to right, ${fillColor} ${fillPct}%, transparent ${fillPct}%)`
+                  : active ? 'rgba(201,148,58,0.14)' : 'transparent'
                 return (
                   <button key={section} onClick={() => setSelectedSection(section)} style={{
                     width: '100%', textAlign: 'left',
                     display: 'flex', alignItems: 'center', gap: 9,
                     padding: '8px 12px', borderRadius: 9, marginBottom: 2,
-                    background: active ? 'rgba(201,148,58,0.14)' : 'transparent',
-                    border: active ? '1px solid rgba(201,148,58,0.28)' : '1px solid transparent',
-                    color: active ? '#e8c878' : 'rgba(240,232,208,0.5)',
-                    fontSize: 13, fontWeight: active ? 600 : 400,
-                    cursor: 'pointer', transition: 'all 0.15s',
+                    background: fillBg,
+                    border: active ? '1px solid rgba(201,148,58,0.28)' : fillPct > 0 ? '1px solid rgba(201,148,58,0.1)' : '1px solid transparent',
+                    color: active ? '#e8c878' : fillPct > 0 ? 'rgba(240,232,208,0.75)' : 'rgba(240,232,208,0.5)',
+                    fontSize: 13, fontWeight: active ? 600 : fillPct > 0 ? 500 : 400,
+                    cursor: 'pointer', transition: 'background 0.6s ease, border-color 0.3s',
                   }}>
                     <span style={{ fontSize: 13, opacity: 0.7, width: 16, textAlign: 'center', flexShrink: 0 }}>
                       {SECTION_ICONS[section] || '·'}
                     </span>
-                    {section}
+                    <span style={{ flex: 1 }}>{section}</span>
                   </button>
                 )
               })}

@@ -33,6 +33,10 @@ interface JournalOption {
 
 const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
   'Case Report': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 2500, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Abstract','Introduction','Case Presentation','Discussion','Conclusion'],
+      sectionLimits: { Abstract: 200, Introduction: 300, 'Case Presentation': 1200, Discussion: 600, Conclusion: 150 },
+      notes: 'Popular Indian medical journal. Vancouver style. No APC.' },
     { name: 'BMJ Case Reports', openAccess: true, if: '1.5', wordLimit: 3000, fee: '£1,770 APC', turnaround: '4–6 weeks',
       requiredSections: ['Abstract','Introduction','Case Presentation','Discussion','Patient Perspective','Learning Points'],
       sectionLimits: { Abstract: 150, Introduction: 300, 'Case Presentation': 1500, Discussion: 700, 'Patient Perspective': 150, 'Learning Points': 100 },
@@ -55,6 +59,10 @@ const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
       notes: 'Ideal for residents and postgraduate doctors.' },
   ],
   'Case Series': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 2500, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Abstract','Introduction','Case Presentations','Discussion','Conclusion'],
+      sectionLimits: { Abstract: 200, Introduction: 300, 'Case Presentations': 1400, Discussion: 600, Conclusion: 150 },
+      notes: 'Popular Indian medical journal. Vancouver style. No APC.' },
     { name: 'BMJ Case Reports', openAccess: true, if: '1.5', wordLimit: 3000, fee: '£1,770 APC', turnaround: '4–6 weeks',
       requiredSections: ['Abstract','Introduction','Case Presentations','Discussion','Learning Points'],
       sectionLimits: { Abstract: 150, Introduction: 300, 'Case Presentations': 1800, Discussion: 600, 'Learning Points': 100 },
@@ -69,6 +77,10 @@ const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
       notes: 'Good for multiple rare cases.' },
   ],
   'Original Study': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 3000, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Abstract','Introduction','Methods','Results','Discussion','Conclusion'],
+      sectionLimits: { Abstract: 200, Introduction: 300, Methods: 700, Results: 800, Discussion: 700, Conclusion: 150 },
+      notes: 'Popular Indian medical journal. Vancouver style. No APC.' },
     { name: 'PLOS ONE', openAccess: true, if: '3.7', wordLimit: 5000, fee: '$1,955', turnaround: '5–8 weeks',
       requiredSections: ['Abstract','Introduction','Methods','Results','Discussion'],
       sectionLimits: { Abstract: 300, Introduction: 600, Methods: 1200, Results: 1500, Discussion: 1200 },
@@ -91,6 +103,10 @@ const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
       notes: 'High clinical relevance required.' },
   ],
   'Review Article': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 3000, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Abstract','Introduction','Methods','Results','Discussion','Conclusion'],
+      sectionLimits: { Abstract: 200, Introduction: 300, Methods: 700, Results: 800, Discussion: 700, Conclusion: 150 },
+      notes: 'Popular Indian medical journal. Vancouver style. No APC.' },
     { name: 'PLOS ONE', openAccess: true, if: '3.7', wordLimit: 5000, fee: '$1,955', turnaround: '5–8 weeks',
       requiredSections: ['Abstract','Introduction','Methods','Results','Discussion'],
       sectionLimits: { Abstract: 300, Introduction: 600, Methods: 1000, Results: 1500, Discussion: 1400 },
@@ -109,6 +125,10 @@ const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
       notes: 'Strong clinical practice preference.' },
   ],
   'Systematic Review': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 3000, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Abstract','Introduction','Methods','Results','Discussion','Conclusion'],
+      sectionLimits: { Abstract: 200, Introduction: 300, Methods: 800, Results: 800, Discussion: 700, Conclusion: 150 },
+      notes: 'Popular Indian medical journal. Vancouver style. No APC.' },
     { name: 'BMJ Open', openAccess: true, if: '2.9', wordLimit: 4000, fee: '£2,000 APC', turnaround: '4–8 weeks',
       requiredSections: ['Abstract','Introduction','Methods','Results','Discussion'],
       sectionLimits: { Abstract: 300, Introduction: 500, Methods: 1000, Results: 1000, Discussion: 900 },
@@ -123,6 +143,10 @@ const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
       notes: 'Very high bar. Large clinical impact required.' },
   ],
   'Meta-Analysis': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 3000, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Abstract','Introduction','Methods','Results','Discussion','Conclusion'],
+      sectionLimits: { Abstract: 200, Introduction: 300, Methods: 800, Results: 800, Discussion: 700, Conclusion: 150 },
+      notes: 'Popular Indian medical journal. Vancouver style. No APC.' },
     { name: 'JAMA', openAccess: false, if: '157', wordLimit: 3000, fee: 'None', turnaround: '4–6 weeks',
       requiredSections: ['Abstract','Introduction','Methods','Results','Discussion'],
       sectionLimits: { Abstract: 350, Introduction: 250, Methods: 700, Results: 800, Discussion: 700 },
@@ -151,6 +175,10 @@ const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
       notes: 'Good for early career researchers.' },
   ],
   'Audit': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 3000, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Abstract','Introduction','Methods','Results','Discussion','Recommendations','Conclusion'],
+      sectionLimits: { Abstract: 200, Introduction: 300, Methods: 700, Results: 700, Discussion: 600, Recommendations: 250, Conclusion: 150 },
+      notes: 'Popular Indian medical journal. Vancouver style. No APC.' },
     { name: 'BMJ Open', openAccess: true, if: '2.9', wordLimit: 4000, fee: '£2,000 APC', turnaround: '4–8 weeks',
       requiredSections: ['Abstract','Introduction','Methods','Results','Discussion','Recommendations'],
       sectionLimits: { Abstract: 300, Introduction: 500, Methods: 900, Results: 900, Discussion: 900, Recommendations: 300 },
@@ -165,6 +193,10 @@ const JOURNALS_BY_STUDY_TYPE: Record<string, JournalOption[]> = {
       notes: 'Fast turnaround for quality improvement reports.' },
   ],
   'Letter to Editor': [
+    { name: 'JCDR (Journal of Clinical and Diagnostic Research)', openAccess: true, if: '0.5', wordLimit: 500, fee: 'None', turnaround: '3–6 weeks',
+      requiredSections: ['Body','References'],
+      sectionLimits: { Body: 500 },
+      notes: 'Popular Indian medical journal. No APC. Good for clinical correspondence.' },
     { name: 'NEJM', openAccess: false, if: '176', wordLimit: 400, fee: 'None', turnaround: '2–4 weeks',
       requiredSections: ['Body','References'],
       sectionLimits: { Body: 400 },

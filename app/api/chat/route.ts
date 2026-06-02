@@ -5,14 +5,32 @@ import { isScholarServer } from '@/lib/check-subscription'
 import { createClient } from '@supabase/supabase-js'
 import { extractText } from 'unpdf'
 
+function makeSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { persistSession: false } }
+  )
+}
+
+async function getCitationsContext(userId: string, projectId: number): Promise<string> {
+  if (!projectId) return ''
+  try {
+    const supabase = makeSupabaseAdmin()
+    const { data: row } = await supabase.from('project_sections')
+      .select('content').eq('project_id', projectId).eq('user_id', userId).eq('section', '__citations__').single()
+    if (!row?.content) return ''
+    const citations: any[] = JSON.parse(row.content)
+    if (!citations.length) return ''
+    const list = citations.map((c, i) => `${i + 1}. ${c.text || c.formatted || ''}`).filter(s => s.trim().length > 3).join('\n')
+    return list ? `\n\nSaved references for this project (use these when suggesting citations or reviewing):\n${list}` : ''
+  } catch { return '' }
+}
+
 async function getUploadContext(userId: string, projectId: number): Promise<string> {
   if (!projectId) return ''
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false } }
-    )
+    const supabase = makeSupabaseAdmin()
     const { data: uploads } = await supabase
       .from('uploads').select('file_name, file_path')
       .eq('project_id', projectId).eq('user_id', userId)
@@ -57,8 +75,11 @@ export async function POST(req: Request) {
     const safeTitle    = String(projectTitle || '').slice(0, 500)
     const safeType     = String(studyType || '').slice(0, 100)
 
-    const uploadContext = projectId ? await getUploadContext(user.id, Number(projectId)) : ''
-    const uploadBlock   = uploadContext
+    const [uploadContext, citationsContext] = await Promise.all([
+      projectId ? getUploadContext(user.id, Number(projectId)) : Promise.resolve(''),
+      projectId ? getCitationsContext(user.id, Number(projectId)) : Promise.resolve(''),
+    ])
+    const uploadBlock = uploadContext
       ? `\n\nReference documents uploaded by the researcher:\n${uploadContext}\n\nWhen answering, reference specific information from these documents where relevant.`
       : ''
 
@@ -66,7 +87,7 @@ export async function POST(req: Request) {
 
 Current project context:
 - Title: "${safeTitle}"
-- Study type: ${safeType}${uploadBlock}
+- Study type: ${safeType}${uploadBlock}${citationsContext}
 
 Your role:
 - Help the researcher write, structure, and improve their manuscript
