@@ -151,12 +151,12 @@ export default function ProjectsPage() {
                 {projects.length >= 3 ? '🔒 Project limit reached' : `⚡ ${3 - projects.length} free project slot left`}
               </p>
               <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.45)', margin: 0 }}>
-                Upgrade to Scholar for unlimited projects, AI review, and more.
+                Try Scholar free for 28 days — then ₹499/mo. Cancel anytime.
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
               <button onClick={handleUpgrade} disabled={upgrading} style={{ padding: '9px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {upgrading ? '…' : '✦ Upgrade to Scholar — ₹499/mo'}
+                {upgrading ? '…' : '✦ Start 28-day Free Trial — ₹499/mo after'}
               </button>
               {paymentError && <span style={{ fontSize: 11, color: '#f87171' }}>{paymentError}</span>}
             </div>
@@ -176,7 +176,7 @@ export default function ProjectsPage() {
           </div>
           {!isScholar && projects.length >= 3 ? (
             <button onClick={handleUpgrade} disabled={upgrading} style={{ fontSize: 13, fontWeight: 700, color: '#080c18', padding: '11px 24px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
-              {upgrading ? '…' : '🔒 Upgrade to Add More'}
+              {upgrading ? '…' : '🔒 Start Free Trial'}
             </button>
           ) : (
             <Link href="/new-project" style={{

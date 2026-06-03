@@ -52,7 +52,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
           Unlock {feature}
         </h2>
         <p style={{ fontSize: 14, color: 'rgba(240,232,208,0.45)', margin: '0 0 24px', lineHeight: 1.65, fontFamily: inter }}>
-          Upgrade to Scholar to access AI-powered writing tools, unlimited projects, peer review, and more.
+          Try Scholar free for 28 days. Unlimited projects, AI review, citations and more. ₹499/mo after trial.
         </p>
 
         {/* Features list */}
@@ -88,7 +88,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
             fontFamily: inter, marginBottom: 12,
           }}
         >
-          {loading ? 'Opening payment…' : 'Upgrade to Scholar — ₹499/month'}
+          {loading ? 'Opening payment…' : 'Start 28-day Free Trial — ₹499/month after'}
         </button>
 
         <button

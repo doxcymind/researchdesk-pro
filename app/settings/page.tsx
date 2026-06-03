@@ -121,7 +121,7 @@ export default function SettingsPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
                 <button onClick={handleUpgrade} disabled={checkoutLoading} style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: inter }}>
-                  {checkoutLoading ? '…' : '✦ Upgrade to Scholar — ₹499/mo'}
+                  {checkoutLoading ? '…' : '✦ Start 28-day Free Trial — ₹499/mo after'}
                 </button>
                 {paymentError && (
                   <span style={{ fontSize: 12, color: '#f87171' }}>{paymentError}</span>
