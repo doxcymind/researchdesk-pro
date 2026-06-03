@@ -41,6 +41,7 @@ export async function POST(req: Request) {
     cancel_url: `${origin}/pricing`,
     subscription_data: {
       metadata: { supabase_user_id: user.id },
+      trial_period_days: 28,
     },
   })
 
