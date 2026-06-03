@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSubscription } from '@/lib/hooks/useSubscription'
-import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface Project { id: number; title: string; study_type: string; user_id: string; created_at: string }
 
@@ -44,7 +44,7 @@ export default function ProjectsPage() {
   const handleUpgrade = async () => {
     setUpgrading(true)
     setPaymentError(null)
-    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
+    const data = await apiFetch('/api/stripe/checkout', { method: 'POST' }); if (data?.url) window.location.href = data.url; else setPaymentError('Could not start checkout.')
     setUpgrading(false)
   }
 

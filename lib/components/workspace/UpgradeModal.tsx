@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface UpgradeModalProps {
   feature: string
@@ -18,7 +18,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
   const handleUpgrade = async () => {
     setLoading(true)
     setPaymentError(null)
-    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
+    const data = await apiFetch('/api/stripe/checkout', { method: 'POST' }); if (data?.url) window.location.href = data.url; else setPaymentError('Could not start checkout.')
     setLoading(false)
   }
 

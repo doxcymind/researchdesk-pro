@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSubscription } from '@/lib/hooks/useSubscription'
-import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { apiFetch } from '@/lib/api-fetch'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
 const inter  = "var(--font-inter), 'DM Sans', system-ui, sans-serif"
@@ -43,7 +43,7 @@ export default function SettingsPage() {
   const handleUpgrade = async () => {
     setCheckoutLoading(true)
     setPaymentError(null)
-    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
+    const data = await apiFetch('/api/stripe/checkout', { method: 'POST' }); if (data?.url) window.location.href = data.url; else setPaymentError('Could not start checkout.')
     setCheckoutLoading(false)
   }
 
