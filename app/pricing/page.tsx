@@ -2,6 +2,7 @@
 import Link from 'next/link'
 import { useState } from 'react'
 import { apiFetch } from '@/lib/api-fetch'
+import { supabase } from '@/lib/supabase'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
 const inter  = "var(--font-inter), 'DM Sans', system-ui, sans-serif"
@@ -84,6 +85,12 @@ export default function PricingPage() {
     setUpgrading(true)
     setPaymentError(null)
     try {
+      // Check if logged in first
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) {
+        window.location.href = '/login?next=/pricing'
+        return
+      }
       const data = await apiFetch('/api/stripe/checkout', { method: 'POST' })
       if (data?.url) window.location.href = data.url
       else setPaymentError('Could not start checkout. Please try again.')
