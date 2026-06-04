@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSubscription } from '@/lib/hooks/useSubscription'
-import { apiFetch } from '@/lib/api-fetch'
+import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
 
 interface Project { id: number; title: string; study_type: string; user_id: string; created_at: string }
 
@@ -44,7 +44,7 @@ export default function ProjectsPage() {
   const handleUpgrade = async () => {
     setUpgrading(true)
     setPaymentError(null)
-    const data = await apiFetch('/api/stripe/checkout', { method: 'POST' }); if (data?.url) window.location.href = data.url; else setPaymentError('Could not start checkout.')
+    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
     setUpgrading(false)
   }
 
@@ -151,12 +151,12 @@ export default function ProjectsPage() {
                 {projects.length >= 3 ? '🔒 Project limit reached' : `⚡ ${3 - projects.length} free project slot left`}
               </p>
               <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.45)', margin: 0 }}>
-                Try Scholar free for 28 days — then ₹499/mo. Cancel anytime.
+                Try Scholar free for 7 days — then ₹499/mo. Cancel anytime.
               </p>
             </div>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 6, alignItems: 'flex-end' }}>
               <button onClick={handleUpgrade} disabled={upgrading} style={{ padding: '9px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 12, fontWeight: 700, border: 'none', cursor: 'pointer', whiteSpace: 'nowrap' }}>
-                {upgrading ? '…' : '✦ Start 28-day Free Trial — ₹499/mo after'}
+                {upgrading ? '…' : '✦ Start 7-day Free Trial — ₹499/mo after'}
               </button>
               {paymentError && <span style={{ fontSize: 11, color: '#f87171' }}>{paymentError}</span>}
             </div>

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSubscription } from '@/lib/hooks/useSubscription'
-import { apiFetch } from '@/lib/api-fetch'
+import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
 const inter  = "var(--font-inter), 'DM Sans', system-ui, sans-serif"
@@ -43,7 +43,7 @@ export default function SettingsPage() {
   const handleUpgrade = async () => {
     setCheckoutLoading(true)
     setPaymentError(null)
-    const data = await apiFetch('/api/stripe/checkout', { method: 'POST' }); if (data?.url) window.location.href = data.url; else setPaymentError('Could not start checkout.')
+    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
     setCheckoutLoading(false)
   }
 
@@ -121,7 +121,7 @@ export default function SettingsPage() {
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
                 <button onClick={handleUpgrade} disabled={checkoutLoading} style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: inter }}>
-                  {checkoutLoading ? '…' : '✦ Start 28-day Free Trial — ₹499/mo after'}
+                  {checkoutLoading ? '…' : '✦ Start 7-day Free Trial — ₹499/mo after'}
                 </button>
                 {paymentError && (
                   <span style={{ fontSize: 12, color: '#f87171' }}>{paymentError}</span>

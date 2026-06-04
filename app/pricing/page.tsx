@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { apiFetch } from '@/lib/api-fetch'
+import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
 import { supabase } from '@/lib/supabase'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
@@ -84,19 +84,9 @@ export default function PricingPage() {
   const handleUpgrade = async () => {
     setUpgrading(true)
     setPaymentError(null)
-    try {
-      // Check if logged in first
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
-        window.location.href = '/login?next=/pricing'
-        return
-      }
-      const data = await apiFetch('/api/stripe/checkout', { method: 'POST' })
-      if (data?.url) window.location.href = data.url
-      else setPaymentError('Could not start checkout. Please try again.')
-    } catch {
-      setPaymentError('Could not start checkout. Please try again.')
-    }
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session) { window.location.href = '/login?next=/pricing'; return }
+    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
     setUpgrading(false)
   }
 

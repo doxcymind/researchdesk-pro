@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { apiFetch } from '@/lib/api-fetch'
+import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
 
 interface UpgradeModalProps {
   feature: string
@@ -18,7 +18,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
   const handleUpgrade = async () => {
     setLoading(true)
     setPaymentError(null)
-    const data = await apiFetch('/api/stripe/checkout', { method: 'POST' }); if (data?.url) window.location.href = data.url; else setPaymentError('Could not start checkout.')
+    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
     setLoading(false)
   }
 
@@ -52,7 +52,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
           Unlock {feature}
         </h2>
         <p style={{ fontSize: 14, color: 'rgba(240,232,208,0.45)', margin: '0 0 24px', lineHeight: 1.65, fontFamily: inter }}>
-          Try Scholar free for 28 days. Unlimited projects, AI review, citations and more. ₹499/mo after trial.
+          Try Scholar free for 7 days. Unlimited projects, AI review, citations and more. ₹499/mo after trial.
         </p>
 
         {/* Features list */}
@@ -88,7 +88,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
             fontFamily: inter, marginBottom: 12,
           }}
         >
-          {loading ? 'Opening payment…' : 'Start 28-day Free Trial — ₹499/month after'}
+          {loading ? 'Opening payment…' : 'Start 7-day Free Trial — ₹499/month after'}
         </button>
 
         <button

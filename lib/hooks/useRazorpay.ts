@@ -23,13 +23,11 @@ export async function openRazorpayCheckout(
   onSuccess?: () => void,
   onError?: (msg: string) => void,
 ): Promise<void> {
-  const reportError = (msg: string) => {
-    onError?.(msg)
-  }
+  const reportError = (msg: string) => { onError?.(msg) }
 
-  // Skip payment on localhost — keys are only configured on production
+  // Skip payment on localhost
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
-    reportError('Payments are disabled on localhost. Deploy to production to test.')
+    reportError('Payments are disabled on localhost. Use the live site to subscribe.')
     return
   }
 
@@ -37,46 +35,42 @@ export async function openRazorpayCheckout(
     const loaded = await loadRazorpayScript()
     if (!loaded) { reportError('Failed to load payment gateway. Please try again.'); return }
 
-    // Create order on backend
-    const res = await apiFetch('/api/razorpay/order', { method: 'POST' })
-    const order = await res.json()
-    if (order.error) {
-      reportError(order.error === 'Unauthorized' ? 'Please log in to upgrade.' : order.error)
+    // Create subscription on backend
+    const sub = await apiFetch('/api/razorpay/subscribe', { method: 'POST' }) as any
+    if (sub?.error) {
+      reportError(sub.error === 'Unauthorized' ? 'Please log in to upgrade.' : sub.error)
       return
     }
-    if (!order.keyId) {
+    if (!sub?.keyId) {
       reportError('Payment gateway not configured. Please contact support.')
       return
     }
 
     const options = {
-      key: order.keyId,
-      amount: order.amount,
-      currency: order.currency,
-      name: 'ResearchDesk',
-      description: 'Scholar Plan — ₹499/month',
+      key: sub.keyId,
+      subscription_id: sub.subscriptionId,
+      name: 'ResearchDesk Pro',
+      description: '7-day free trial, then ₹499/month',
       image: '/logo.webp',
-      order_id: order.orderId,
       handler: async (response: any) => {
-        // Verify payment on backend
-        const verifyRes = await apiFetch('/api/razorpay/verify', {
+        // Verify subscription payment
+        const verifyRes = await apiFetch('/api/razorpay/verify-subscription', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            razorpay_order_id: response.razorpay_order_id,
+            razorpay_subscription_id: response.razorpay_subscription_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
           }),
-        })
-        const verifyData = await verifyRes.json()
-        if (verifyData.success) {
+        }) as any
+        if (verifyRes?.success) {
           onSuccess?.()
           window.location.href = '/dashboard?upgraded=1'
         } else {
-          reportError('Payment verification failed. Please contact support.')
+          reportError('Verification failed. Please contact support.')
         }
       },
-      prefill: { email: '' },
+      prefill: { email: sub.email ?? '', name: sub.name ?? '' },
       theme: { color: '#c9943a' },
       modal: { ondismiss: () => {} },
     }
