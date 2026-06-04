@@ -36,7 +36,8 @@ export async function openRazorpayCheckout(
     if (!loaded) { reportError('Failed to load payment gateway. Please try again.'); return }
 
     // Create subscription on backend
-    const sub = await apiFetch('/api/razorpay/subscribe', { method: 'POST' }) as any
+    const subRes = await apiFetch('/api/razorpay/subscribe', { method: 'POST' })
+    const sub = await subRes.json()
     if (sub?.error) {
       reportError(sub.error === 'Unauthorized' ? 'Please log in to upgrade.' : `Error: ${sub.error}`)
       return
@@ -54,7 +55,7 @@ export async function openRazorpayCheckout(
       image: '/logo.webp',
       handler: async (response: any) => {
         // Verify subscription payment
-        const verifyRes = await apiFetch('/api/razorpay/verify-subscription', {
+        const verifyRaw = await apiFetch('/api/razorpay/verify-subscription', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -62,7 +63,8 @@ export async function openRazorpayCheckout(
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
           }),
-        }) as any
+        })
+        const verifyRes = await verifyRaw.json()
         if (verifyRes?.success) {
           onSuccess?.()
           window.location.href = '/dashboard?upgraded=1'
