@@ -28,7 +28,7 @@ export async function POST(req: Request) {
 
   await supabase.from('profiles').upsert({
     id: user.id,
-    plan: 'scholar',
+    subscription_status: 'scholar',
     razorpay_subscription_id,
     trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   })
