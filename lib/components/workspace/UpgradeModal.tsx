@@ -91,6 +91,10 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
           {loading ? 'Opening payment…' : 'Start 7-day Free Trial — ₹499/month after'}
         </button>
 
+        <p style={{ fontSize: 11.5, color: 'rgba(240,232,208,0.3)', textAlign: 'center', margin: '0 0 10px', lineHeight: 1.6, fontFamily: inter }}>
+          🔒 A refundable ₹5 will verify your payment method. <strong style={{ color: 'rgba(240,232,208,0.45)' }}>No charge for 7 days.</strong> Cancel anytime.
+        </p>
+
         <button
           onClick={onClose}
           style={{ width: '100%', padding: '10px 0', borderRadius: 12, background: 'transparent', border: '1px solid rgba(255,255,255,0.07)', color: 'rgba(240,232,208,0.35)', fontSize: 13, cursor: 'pointer', fontFamily: inter }}

@@ -138,16 +138,22 @@ export default function PricingPage() {
                 ))}
               </ul>
               {plan.featured ? (
-                <button onClick={handleUpgrade} disabled={upgrading} style={{
-                  display: 'block', width: '100%', textAlign: 'center',
-                  padding: '13px 0', borderRadius: 12, fontSize: 13, fontWeight: 700,
-                  background: 'linear-gradient(135deg, #c9943a, #e8b84a)',
-                  color: '#080c18', border: 'none',
-                  cursor: upgrading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.2s', fontFamily: inter,
-                }}>
-                  {upgrading ? 'Redirecting…' : plan.cta}
-                </button>
+                <>
+                  <button onClick={handleUpgrade} disabled={upgrading} style={{
+                    display: 'block', width: '100%', textAlign: 'center',
+                    padding: '13px 0', borderRadius: 12, fontSize: 13, fontWeight: 700,
+                    background: 'linear-gradient(135deg, #c9943a, #e8b84a)',
+                    color: '#080c18', border: 'none',
+                    cursor: upgrading ? 'not-allowed' : 'pointer',
+                    transition: 'all 0.2s', fontFamily: inter,
+                  }}>
+                    {upgrading ? 'Redirecting…' : plan.cta}
+                  </button>
+                  <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', textAlign: 'center', margin: '8px 0 0', lineHeight: 1.6 }}>
+                    🔒 Refundable ₹5 to verify payment. <strong style={{ color: 'rgba(240,232,208,0.45)' }}>No charge for 7 days.</strong>
+                  </p>
+                  {paymentError && <p style={{ fontSize: 12, color: '#f87171', textAlign: 'center', marginTop: 6 }}>{paymentError}</p>}
+                </>
               ) : (
                 <Link href={plan.href} style={{
                   display: 'block', textAlign: 'center', textDecoration: 'none',
