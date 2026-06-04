@@ -22,11 +22,13 @@ export async function POST(req: Request) {
       },
     } as any)
 
+    console.log('Razorpay subscription created:', JSON.stringify(subscription))
     return Response.json({
-      subscriptionId: subscription.id,
+      subscriptionId: (subscription as any).id,
       keyId: process.env.RAZORPAY_KEY_ID,
       email: user.email,
       name: user.user_metadata?.full_name ?? '',
+      debug: subscription,
     })
   } catch (e: any) {
     console.error('Razorpay subscription error:', e)
