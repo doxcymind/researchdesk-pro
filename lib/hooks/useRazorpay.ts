@@ -38,11 +38,11 @@ export async function openRazorpayCheckout(
     // Create subscription on backend
     const sub = await apiFetch('/api/razorpay/subscribe', { method: 'POST' }) as any
     if (sub?.error) {
-      reportError(sub.error === 'Unauthorized' ? 'Please log in to upgrade.' : sub.error)
+      reportError(sub.error === 'Unauthorized' ? 'Please log in to upgrade.' : `Error: ${sub.error}`)
       return
     }
     if (!sub?.keyId) {
-      reportError('Payment gateway not configured. Please contact support.')
+      reportError(`Setup error: ${JSON.stringify(sub)}`)
       return
     }
 
