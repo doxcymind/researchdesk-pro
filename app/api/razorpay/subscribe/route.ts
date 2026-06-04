@@ -12,15 +12,21 @@ export async function POST(req: Request) {
       key_secret: process.env.RAZORPAY_KEY_SECRET!,
     })
 
-    const subscription = await razorpay.subscriptions.create({
+    // Calculate trial end date (7 days from now)
+    const trialEndAt = Math.floor(Date.now() / 1000) + 7 * 24 * 60 * 60
+
+    const subscriptionPayload: Record<string, any> = {
       plan_id: process.env.RAZORPAY_PLAN_ID!,
       total_count: 12,
       quantity: 1,
+      start_at: trialEndAt, // Start billing after 7-day trial
       notes: {
         supabase_user_id: user.id,
         plan: 'scholar',
       },
-    } as any)
+    }
+
+    const subscription = await razorpay.subscriptions.create(subscriptionPayload as any)
 
     console.log('Razorpay subscription created:', JSON.stringify(subscription))
     return Response.json({
