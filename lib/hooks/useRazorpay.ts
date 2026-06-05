@@ -67,7 +67,7 @@ export async function openRazorpayCheckout(
         const verifyRes = await verifyRaw.json()
         if (verifyRes?.success) {
           onSuccess?.()
-          window.location.href = '/dashboard?upgraded=1'
+          window.location.reload()
         } else {
           reportError('Verification failed. Please contact support.')
         }

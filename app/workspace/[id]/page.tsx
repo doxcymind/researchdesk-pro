@@ -58,7 +58,7 @@ export default function WorkspacePage() {
   const [sectionWordCounts, setSectionWordCounts] = useState<Record<string, number>>({})
   const [upgradeFeature, setUpgradeFeature] = useState<string | null>(null)
   const [shareUrl, setShareUrl] = useState<string | null>(null)
-  const { isScholar } = useSubscription()
+  const { isScholar, loading: subLoading } = useSubscription()
   const contentRef = useRef<HTMLElement>(null)
 
   const autosaveTimeout = useRef<NodeJS.Timeout | null>(null)
@@ -319,7 +319,8 @@ export default function WorkspacePage() {
 
   const reviewSection = async () => {
     if (!project || content.trim().length < 20) return
-    if (!isScholar) { setUpgradeFeature('AI Peer Review'); return }
+    if (!isScholar && !subLoading) { setUpgradeFeature('AI Peer Review'); return }
+    if (subLoading) return
     try {
       setReviewing(true)
       const response = await apiFetch('/api/review', {
