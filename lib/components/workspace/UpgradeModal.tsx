@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { apiFetch } from '@/lib/api-fetch'
 
 interface UpgradeModalProps {
   feature: string
@@ -11,6 +12,26 @@ interface UpgradeModalProps {
 export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
   const [loading, setLoading] = useState(false)
   const [paymentError, setPaymentError] = useState<string | null>(null)
+  const [restoring, setRestoring] = useState(false)
+  const [restoreMsg, setRestoreMsg] = useState<string | null>(null)
+
+  const handleRestore = async () => {
+    setRestoring(true); setRestoreMsg(null)
+    try {
+      const res = await apiFetch('/api/razorpay/activate', { method: 'POST' })
+      const data = await res.json()
+      if (data?.success) {
+        setRestoreMsg('✓ Access restored! Reloading…')
+        setTimeout(() => window.location.reload(), 1200)
+      } else {
+        setRestoreMsg('No active subscription found for your account. Please subscribe below.')
+      }
+    } catch {
+      setRestoreMsg('Could not reach server. Please try again.')
+    } finally {
+      setRestoring(false)
+    }
+  }
 
   const inter = "var(--font-inter),'DM Sans',system-ui,sans-serif"
   const cinzel = "var(--font-cinzel),'Cormorant Garamond',Georgia,serif"
@@ -101,6 +122,21 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
         >
           Maybe later
         </button>
+
+        {/* Restore access for users who already paid */}
+        <div style={{ marginTop: 16, textAlign: 'center' }}>
+          {restoreMsg ? (
+            <p style={{ fontSize: 12, color: restoreMsg.startsWith('✓') ? '#4ade80' : '#f87171', margin: 0, fontFamily: inter }}>{restoreMsg}</p>
+          ) : (
+            <button
+              onClick={handleRestore}
+              disabled={restoring}
+              style={{ background: 'none', border: 'none', cursor: restoring ? 'not-allowed' : 'pointer', fontSize: 12, color: 'rgba(240,232,208,0.25)', fontFamily: inter, textDecoration: 'underline', padding: 0 }}
+            >
+              {restoring ? 'Checking…' : 'Already subscribed? Restore access'}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
