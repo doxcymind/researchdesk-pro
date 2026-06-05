@@ -92,7 +92,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
         </button>
 
         <p style={{ fontSize: 11.5, color: 'rgba(240,232,208,0.3)', textAlign: 'center', margin: '0 0 10px', lineHeight: 1.6, fontFamily: inter }}>
-          🔒 A refundable ₹5 will verify your payment method. <strong style={{ color: 'rgba(240,232,208,0.45)' }}>No charge for 7 days.</strong> Cancel anytime.
+          🔒 A refundable ₹5 will verify your payment method. <strong style={{ color: 'rgba(240,232,208,0.45)' }}>First ₹499 charge on {new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}.</strong> Cancel anytime.
         </p>
 
         <button
