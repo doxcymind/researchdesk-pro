@@ -24,7 +24,6 @@ export async function POST(req: Request) {
     await supabase.from('profiles').upsert({
       id: user.id,
       subscription_status: 'scholar',
-      trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     })
     return Response.json({ success: true, reason: 'whitelist' })
   }
