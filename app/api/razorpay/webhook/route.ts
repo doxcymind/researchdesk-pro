@@ -41,7 +41,6 @@ export async function POST(req: Request) {
       if (profile?.id) {
         await supabase.from('profiles').update({
           subscription_status: 'scholar',
-          trial_ends_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
         }).eq('id', profile.id)
       }
     }
