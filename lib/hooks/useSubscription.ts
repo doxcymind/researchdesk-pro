@@ -32,11 +32,26 @@ export function useSubscription() {
 
         const { data } = await supabase
           .from('profiles')
-          .select('subscription_status')
+          .select('subscription_status, razorpay_subscription_id')
           .eq('id', user.id)
           .single()
 
-        setPlan((data?.subscription_status as Plan) || 'free')
+        const status = (data?.subscription_status as Plan) || 'free'
+
+        // Auto-activate: if user has a subscription ID but status isn't scholar yet,
+        // call the activate endpoint to verify with Razorpay and fix the status
+        if (status !== 'scholar' && data?.razorpay_subscription_id) {
+          try {
+            const token = session.access_token
+            const res = await fetch('/api/razorpay/activate', {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}` },
+            })
+            if (res.ok) { setPlan('scholar'); return }
+          } catch {}
+        }
+
+        setPlan(status)
       } catch {
         // fail silently — default to free plan
       } finally {
