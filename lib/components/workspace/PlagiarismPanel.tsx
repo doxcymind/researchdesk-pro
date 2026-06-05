@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { apiFetch } from '@/lib/api-fetch'
 import { supabase } from '@/lib/supabase'
 
@@ -136,6 +136,56 @@ export default function PlagiarismPanel({ projectId }: { projectId: number }) {
   const [showText, setShowTx]     = useState(false)
   const fileRef                   = useRef<HTMLInputElement>(null)
 
+  // Copyleaks real scan state
+  const [clScanId, setClScanId]     = useState<string | null>(null)
+  const [clStatus, setClStatus]     = useState<'idle'|'submitting'|'pending'|'complete'|'error'|'unavailable'>('idle')
+  const [clScore, setClScore]       = useState<number | null>(null)
+  const [clError, setClError]       = useState<string | null>(null)
+  const clPollRef                   = useRef<NodeJS.Timeout | null>(null)
+
+  // Poll Copyleaks result until complete
+  useEffect(() => {
+    if (!clScanId || clStatus !== 'pending') return
+    const poll = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession()
+        const res = await fetch(`/api/plagiarism/copyleaks/result?scanId=${encodeURIComponent(clScanId)}`,
+          { headers: { Authorization: `Bearer ${session?.access_token ?? ''}` } })
+        const data = await res.json()
+        if (data.status === 'complete') {
+          setClStatus('complete')
+          setClScore(data.similarity_score ?? null)
+          if (clPollRef.current) clearInterval(clPollRef.current)
+        } else if (data.status === 'error') {
+          setClStatus('error')
+          setClError(data.error_message || 'Scan failed')
+          if (clPollRef.current) clearInterval(clPollRef.current)
+        }
+      } catch {}
+    }
+    clPollRef.current = setInterval(poll, 8000)
+    poll() // immediate first check
+    return () => { if (clPollRef.current) clearInterval(clPollRef.current) }
+  }, [clScanId, clStatus])
+
+  const runCopyleaks = async () => {
+    if (!hasText) return
+    setClStatus('submitting'); setClError(null); setClScore(null); setClScanId(null)
+    try {
+      const res = await apiFetch('/api/plagiarism/copyleaks', { method: 'POST', body: JSON.stringify({ text }) })
+      const data = await res.json()
+      if (data.error) {
+        if (data.error.toLowerCase().includes('not configured')) setClStatus('unavailable')
+        else { setClStatus('error'); setClError(data.error) }
+        return
+      }
+      setClScanId(data.scanId)
+      setClStatus('pending')
+    } catch {
+      setClStatus('error'); setClError('Failed to submit scan.')
+    }
+  }
+
   const loadManuscript = async () => {
     setError(null); setLoadingMs(true); setText(''); setLS([])
     try {
@@ -186,7 +236,12 @@ export default function PlagiarismPanel({ projectId }: { projectId: number }) {
     if (r1.status === 'fulfilled' && !r1.value.error) setView('results')
   }
 
-  const reset = () => { setView('input'); setAI(null); setSrc(null); setError(null); setText(''); setFN(null); setTrunc(false); setAM(null); setShowTx(false); setLS([]) }
+  const reset = () => {
+    setView('input'); setAI(null); setSrc(null); setError(null); setText(''); setFN(null)
+    setTrunc(false); setAM(null); setShowTx(false); setLS([])
+    setClScanId(null); setClStatus('idle'); setClScore(null); setClError(null)
+    if (clPollRef.current) clearInterval(clPollRef.current)
+  }
 
   const downloadReport = () => {
     if (!ai) return
@@ -386,7 +441,7 @@ export default function PlagiarismPanel({ projectId }: { projectId: number }) {
         </p>
       )}
 
-      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } }`}</style>
+      <style>{`@keyframes spin { from { transform: rotate(0deg) } to { transform: rotate(360deg) } } @keyframes pulse { 0%,100% { opacity:1 } 50% { opacity:0.4 } }`}</style>
     </div>
   )
 
@@ -434,14 +489,12 @@ export default function PlagiarismPanel({ projectId }: { projectId: number }) {
           </div>
         </div>
 
-        {/* Similarity score */}
+        {/* Similarity score — AI estimated */}
         <div style={{ background: 'rgba(255,255,255,0.025)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 16, padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8 }}>
-          <Donut score={overallSimilarity} label="Similarity" size={110} />
+          <Donut score={overallSimilarity} label="AI Est." size={110} />
           <div style={{ textAlign: 'center' }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(240,232,208,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>From Known Sources</div>
-            <div style={{ marginTop: 4, fontSize: 12, color: simColor, fontWeight: 600 }}>
-              {overallSimilarity <= 15 ? 'Within acceptable range' : overallSimilarity <= 30 ? 'Moderate — review flagged' : 'High — action needed'}
-            </div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(240,232,208,0.4)', textTransform: 'uppercase', letterSpacing: '0.07em' }}>AI-Estimated Similarity</div>
+            <div style={{ marginTop: 4, fontSize: 11, color: 'rgba(240,232,208,0.3)', fontStyle: 'italic' }}>Not a database scan</div>
           </div>
         </div>
 
@@ -526,11 +579,14 @@ export default function PlagiarismPanel({ projectId }: { projectId: number }) {
           </div>
         )}
 
-        {/* Source matches */}
+        {/* Source matches — clearly labelled AI */}
         {src && (src.matches.length > 0 || true) && (
           <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.07)', borderRadius: 14, overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0' }}>🔎 Source Matches</span>
+              <div>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0' }}>🤖 AI Source Guesses</span>
+                <div style={{ fontSize: 10, color: 'rgba(240,232,208,0.3)', marginTop: 1 }}>Gemini AI inference — not a real database scan</div>
+              </div>
               <span style={{ fontSize: 11, fontWeight: 700, color: simColor }}>~{src.estimated_similarity}%</span>
             </div>
             <div style={{ padding: '12px', display: 'flex', flexDirection: 'column', gap: 8 }}>
@@ -557,6 +613,75 @@ export default function PlagiarismPanel({ projectId }: { projectId: number }) {
         )}
       </div>
 
+      {/* ── Copyleaks Real Database Scan ── */}
+      <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.10)', borderRadius: 14, overflow: 'hidden', marginBottom: 20 }}>
+        <div style={{ padding: '14px 20px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 10 }}>
+          <div>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#f0e8d0' }}>🔍 Real Database Scan</span>
+            <div style={{ fontSize: 11, color: 'rgba(240,232,208,0.35)', marginTop: 2 }}>
+              Powered by Copyleaks · checks internet + academic databases · takes 1–3 min
+            </div>
+          </div>
+          {clStatus === 'idle' && (
+            <button onClick={runCopyleaks} style={{
+              padding: '8px 18px', borderRadius: 9, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg,#6366f1,#818cf8)', color: '#fff',
+              boxShadow: '0 3px 14px rgba(99,102,241,0.35)',
+            }}>Run Copyleaks Scan</button>
+          )}
+          {clStatus === 'submitting' && <span style={{ fontSize: 12, color: 'rgba(240,232,208,0.45)' }}>⏳ Submitting…</span>}
+          {clStatus === 'pending' && <span style={{ fontSize: 12, color: '#fbbf24', display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ animation: 'spin 1.4s linear infinite', display: 'inline-block' }}>⏳</span> Scanning… checking every 8 s</span>}
+          {clStatus === 'complete' && <span style={{ fontSize: 12, color: '#4ade80', fontWeight: 700 }}>✓ Complete</span>}
+          {clStatus === 'error' && <button onClick={runCopyleaks} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: '1px solid rgba(248,113,113,0.4)', background: 'rgba(239,68,68,0.08)', color: '#f87171', cursor: 'pointer' }}>Retry</button>}
+          {clStatus === 'unavailable' && <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.3)', fontStyle: 'italic' }}>Not configured</span>}
+        </div>
+
+        <div style={{ padding: '16px 20px' }}>
+          {clStatus === 'idle' && (
+            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.3)', margin: 0, lineHeight: 1.7 }}>
+              Click <strong style={{ color: 'rgba(240,232,208,0.5)' }}>Run Copyleaks Scan</strong> to check your text against billions of internet pages and academic papers. Results arrive asynchronously — the page will update automatically.
+            </p>
+          )}
+          {clStatus === 'submitting' && <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>Uploading text to Copyleaks…</p>}
+          {clStatus === 'pending' && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div style={{ height: 6, borderRadius: 99, background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: '60%', background: 'linear-gradient(90deg,#6366f1,#818cf8)', borderRadius: 99, animation: 'pulse 2s ease-in-out infinite' }} />
+              </div>
+              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>Scan in progress. You can navigate away — results will show here when you return.</p>
+            </div>
+          )}
+          {clStatus === 'complete' && clScore !== null && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+              <Donut score={clScore} label="Similar" size={100} />
+              <div>
+                <p style={{ fontSize: 14, fontWeight: 700, color: clScore <= 15 ? '#4ade80' : clScore <= 30 ? '#fbbf24' : '#f87171', margin: '0 0 4px' }}>
+                  {clScore}% similarity detected
+                </p>
+                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.45)', margin: 0, lineHeight: 1.6 }}>
+                  {clScore <= 15 ? 'Acceptable — within normal range for academic writing.' : clScore <= 30 ? 'Moderate similarity — review flagged sections and rephrase where needed.' : 'High similarity — significant revision recommended before submission.'}
+                </p>
+              </div>
+            </div>
+          )}
+          {clStatus === 'complete' && clScore === null && (
+            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', margin: 0 }}>Scan complete — score not available. Check Copyleaks dashboard for details.</p>
+          )}
+          {clStatus === 'error' && <p style={{ fontSize: 12, color: '#f87171', margin: 0 }}>{clError || 'Scan failed. Please try again.'}</p>}
+          {clStatus === 'unavailable' && (
+            <div style={{ background: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.2)', borderRadius: 10, padding: '12px 14px' }}>
+              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.5)', margin: '0 0 6px', fontWeight: 600 }}>To enable real database scanning:</p>
+              <ol style={{ margin: 0, padding: '0 0 0 16px', display: 'flex', flexDirection: 'column', gap: 4 }}>
+                <li style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', lineHeight: 1.6 }}>Sign up at <strong style={{ color: '#818cf8' }}>copyleaks.com</strong> (free trial: 25 pages)</li>
+                <li style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', lineHeight: 1.6 }}>Copy your API email + key from the Copyleaks dashboard</li>
+                <li style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', lineHeight: 1.6 }}>Add <code style={{ color: '#818cf8' }}>COPYLEAKS_EMAIL</code> and <code style={{ color: '#818cf8' }}>COPYLEAKS_KEY</code> to Vercel environment variables</li>
+                <li style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', lineHeight: 1.6 }}>Redeploy — the button will activate automatically</li>
+              </ol>
+            </div>
+          )}
+        </div>
+      </div>
+
       {/* ── Strengths + Recommendations ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
         {ai.strengths.length > 0 && (
@@ -579,7 +704,7 @@ export default function PlagiarismPanel({ projectId }: { projectId: number }) {
 
       {/* Disclaimer */}
       <p style={{ fontSize: 11, color: 'rgba(240,232,208,0.2)', lineHeight: 1.7, textAlign: 'center', margin: 0 }}>
-        ⓘ AI-based analysis using Groq LLM. Results are indicative — always verify against your institution&apos;s plagiarism policy before journal submission.
+        ⓘ AI analysis (Gemini) is indicative only — it does not scan real databases. For submission-grade results, run the Copyleaks real database scan above. Always verify against your institution&apos;s plagiarism policy before journal submission.
       </p>
     </div>
   )
