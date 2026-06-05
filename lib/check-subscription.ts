@@ -5,6 +5,7 @@ const WHITELISTED_EMAILS = [
   'gaur.gsvm@gmail.com',
   'pheonixfire968@gmail.com',
   'itsthetimemsd@gmail.com',
+  'drsparshdixit@gmail.com',
 ]
 
 /**
