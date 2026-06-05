@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic'
 import Razorpay from 'razorpay'
 import { getAuthUser } from '@/lib/auth-helper'
+import { createClient } from '@supabase/supabase-js'
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
@@ -27,9 +28,20 @@ export async function POST(req: Request) {
     }
 
     const subscription = await razorpay.subscriptions.create(subscriptionPayload as any)
+    const subscriptionId = (subscription as any).id
+
+    // Store subscription ID immediately so auto-activation can verify it after payment
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+    await supabase.from('profiles').upsert({
+      id: user.id,
+      razorpay_subscription_id: subscriptionId,
+    })
 
     return Response.json({
-      subscriptionId: (subscription as any).id,
+      subscriptionId,
       keyId: process.env.RAZORPAY_KEY_ID,
       email: user.email,
       name: user.user_metadata?.full_name ?? '',
