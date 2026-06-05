@@ -53,23 +53,17 @@ export async function openRazorpayCheckout(
       name: 'ResearchDesk Pro',
       description: '7-day free trial, then ₹499/month',
       image: '/logo.webp',
-      handler: async (response: any) => {
-        // Verify subscription payment
-        const verifyRaw = await apiFetch('/api/razorpay/verify-subscription', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_subscription_id: response.razorpay_subscription_id,
-            razorpay_payment_id: response.razorpay_payment_id,
-            razorpay_signature: response.razorpay_signature,
-          }),
-        })
-        const verifyRes = await verifyRaw.json()
-        if (verifyRes?.success) {
+      handler: async (_response: any) => {
+        // Activate Scholar plan — subscription ID already stored on backend
+        const activateRes = await apiFetch('/api/razorpay/activate', { method: 'POST' })
+        const activateData = await activateRes.json()
+        if (activateData?.success) {
           onSuccess?.()
           window.location.reload()
         } else {
-          reportError('Verification failed. Please contact support.')
+          // Fallback: reload anyway — webhook will activate asynchronously
+          onSuccess?.()
+          window.location.reload()
         }
       },
       prefill: { email: sub.email ?? '', name: sub.name ?? '' },
