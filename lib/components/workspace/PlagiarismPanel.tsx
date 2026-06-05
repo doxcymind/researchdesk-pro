@@ -4,6 +4,32 @@ import { useRef, useState } from 'react'
 import { apiFetch } from '@/lib/api-fetch'
 import { supabase } from '@/lib/supabase'
 
+async function loadManuscriptText(projectId: number): Promise<{ text: string; sections: string[] }> {
+  const { data: { session } } = await supabase.auth.getSession()
+  const user = session?.user
+  if (!user) throw new Error('Not logged in')
+
+  const { data, error } = await supabase
+    .from('project_sections')
+    .select('section, content')
+    .eq('project_id', projectId)
+    .eq('user_id', user.id)
+
+  if (error) throw error
+
+  const SKIP = new Set(['Plagiarism Check', 'Authors', 'AI Assistant', 'Uploads',
+    'Clinical Trials', 'DOI Resolver', 'Journal Selector', 'Submission Tracker',
+    'Cover Letter', 'Literature Search', 'Overview'])
+
+  const rows = (data ?? [])
+    .filter(r => !r.section.startsWith('__') && !SKIP.has(r.section) && r.content?.trim())
+    .sort((a, b) => a.section.localeCompare(b.section))
+
+  const sections = rows.map(r => r.section)
+  const text = rows.map(r => `--- ${r.section} ---\n${r.content.trim()}`).join('\n\n')
+  return { text, sections }
+}
+
 interface FlaggedPhrase {
   text: string; reason: string; severity: 'low' | 'medium' | 'high'
 }
@@ -89,24 +115,37 @@ function HighlightedText({ text, phrases }: { text: string; phrases: FlaggedPhra
   )
 }
 
-type InputMode = 'file' | 'paste'
+type InputMode = 'manuscript' | 'file' | 'paste'
 type View = 'input' | 'results'
 
-export default function PlagiarismPanel({ projectId: _pid }: { projectId: number }) {
-  const [mode, setMode]       = useState<InputMode>('file')
-  const [view, setView]       = useState<View>('input')
-  const [text, setText]       = useState('')
-  const [fileName, setFN]     = useState<string | null>(null)
-  const [extracting, setExt]  = useState(false)
-  const [running, setRunning] = useState(false)
-  const [error, setError]     = useState<string | null>(null)
-  const [truncated, setTrunc] = useState(false)
-  const [dragOver, setDO]     = useState(false)
-  const [ai, setAI]           = useState<AnalysisResult | null>(null)
-  const [src, setSrc]         = useState<SourceResult | null>(null)
-  const [activeMatch, setAM]  = useState<number | null>(null)
-  const [showText, setShowTx] = useState(false)
-  const fileRef               = useRef<HTMLInputElement>(null)
+export default function PlagiarismPanel({ projectId }: { projectId: number }) {
+  const [mode, setMode]           = useState<InputMode>('manuscript')
+  const [view, setView]           = useState<View>('input')
+  const [text, setText]           = useState('')
+  const [fileName, setFN]         = useState<string | null>(null)
+  const [extracting, setExt]      = useState(false)
+  const [loadingMs, setLoadingMs] = useState(false)
+  const [loadedSections, setLS]   = useState<string[]>([])
+  const [running, setRunning]     = useState(false)
+  const [error, setError]         = useState<string | null>(null)
+  const [truncated, setTrunc]     = useState(false)
+  const [dragOver, setDO]         = useState(false)
+  const [ai, setAI]               = useState<AnalysisResult | null>(null)
+  const [src, setSrc]             = useState<SourceResult | null>(null)
+  const [activeMatch, setAM]      = useState<number | null>(null)
+  const [showText, setShowTx]     = useState(false)
+  const fileRef                   = useRef<HTMLInputElement>(null)
+
+  const loadManuscript = async () => {
+    setError(null); setLoadingMs(true); setText(''); setLS([])
+    try {
+      const { text: ms, sections } = await loadManuscriptText(projectId)
+      if (!ms.trim()) { setError('No manuscript content found. Write some sections first, then check again.'); return }
+      setText(ms); setLS(sections); setFN(null)
+    } catch (e: any) {
+      setError(e?.message || 'Failed to load manuscript.')
+    } finally { setLoadingMs(false) }
+  }
 
   const wc      = text.trim() ? text.trim().split(/\s+/).length : 0
   const hasText = text.trim().length > 0
@@ -147,7 +186,7 @@ export default function PlagiarismPanel({ projectId: _pid }: { projectId: number
     if (r1.status === 'fulfilled' && !r1.value.error) setView('results')
   }
 
-  const reset = () => { setView('input'); setAI(null); setSrc(null); setError(null); setText(''); setFN(null); setTrunc(false); setAM(null); setShowTx(false) }
+  const reset = () => { setView('input'); setAI(null); setSrc(null); setError(null); setText(''); setFN(null); setTrunc(false); setAM(null); setShowTx(false); setLS([]) }
 
   const downloadReport = () => {
     if (!ai) return
@@ -220,17 +259,63 @@ export default function PlagiarismPanel({ projectId: _pid }: { projectId: number
 
       {/* Input mode toggle */}
       <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'rgba(255,255,255,0.04)', padding: 4, borderRadius: 11, width: 'fit-content' }}>
-        {(['file', 'paste'] as InputMode[]).map(m => (
-          <button key={m} onClick={() => setMode(m)} style={{
+        {([
+          ['manuscript', '📝 Current Manuscript'],
+          ['file',       '📎 Upload File'],
+          ['paste',      '✎ Paste Text'],
+        ] as [InputMode, string][]).map(([m, label]) => (
+          <button key={m} onClick={() => { setMode(m); if (m !== 'manuscript') { setText(''); setLS([]) } }} style={{
             padding: '7px 18px', borderRadius: 8, fontSize: 13, cursor: 'pointer', border: 'none', transition: 'all 0.15s',
             background: mode === m ? 'rgba(201,148,58,0.2)' : 'transparent',
             color: mode === m ? '#e8b84a' : 'rgba(240,232,208,0.4)', fontWeight: mode === m ? 700 : 400,
             boxShadow: mode === m ? '0 0 0 1px rgba(201,148,58,0.4)' : 'none',
           }}>
-            {m === 'file' ? '📎 Upload File' : '✎ Paste Text'}
+            {label}
           </button>
         ))}
       </div>
+
+      {/* Current Manuscript loader */}
+      {mode === 'manuscript' && (
+        <div style={{ marginBottom: 20 }}>
+          {!text ? (
+            <div style={{ padding: '40px 24px', borderRadius: 18, textAlign: 'center',
+              background: 'rgba(255,255,255,0.025)', border: '1.5px dashed rgba(201,148,58,0.3)' }}>
+              <div style={{ fontSize: 40, marginBottom: 14 }}>📝</div>
+              <p style={{ fontSize: 15, fontWeight: 700, color: 'rgba(240,232,208,0.75)', margin: '0 0 6px' }}>
+                Check your current manuscript
+              </p>
+              <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.3)', margin: '0 0 20px' }}>
+                All written sections (Abstract, Introduction, Methods, etc.) will be combined and analysed.
+              </p>
+              <button onClick={loadManuscript} disabled={loadingMs} style={{
+                padding: '11px 28px', borderRadius: 12, fontSize: 14, fontWeight: 700, border: 'none', cursor: loadingMs ? 'not-allowed' : 'pointer',
+                background: loadingMs ? 'rgba(201,148,58,0.18)' : 'linear-gradient(135deg,#c9943a,#e8b84a)',
+                color: loadingMs ? 'rgba(240,232,208,0.3)' : '#080c18',
+                boxShadow: loadingMs ? 'none' : '0 4px 18px rgba(201,148,58,0.3)',
+                display: 'inline-flex', alignItems: 'center', gap: 8,
+              }}>
+                {loadingMs ? <><span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>⏳</span> Loading…</> : '⚡ Load Manuscript'}
+              </button>
+            </div>
+          ) : (
+            <div style={{ padding: '16px 20px', borderRadius: 14, background: 'rgba(74,222,128,0.06)', border: '1px solid rgba(74,222,128,0.25)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                <div>
+                  <p style={{ fontSize: 14, fontWeight: 700, color: '#4ade80', margin: '0 0 4px' }}>✓ Manuscript loaded</p>
+                  <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', margin: 0 }}>
+                    {loadedSections.join(', ')} · {wc.toLocaleString()} words
+                  </p>
+                </div>
+                <button onClick={() => { setText(''); setLS([]) }} style={{
+                  padding: '5px 12px', borderRadius: 8, fontSize: 12, border: '1px solid rgba(255,255,255,0.1)',
+                  background: 'rgba(255,255,255,0.05)', color: 'rgba(240,232,208,0.4)', cursor: 'pointer',
+                }}>↩ Reset</button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* File drop zone */}
       {mode === 'file' && (
@@ -319,7 +404,7 @@ export default function PlagiarismPanel({ projectId: _pid }: { projectId: number
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, color: '#f0e8d0', marginBottom: 2 }}>Plagiarism Report</div>
             <div style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)' }}>
-              {fileName ?? 'Pasted text'} &nbsp;·&nbsp; {wc.toLocaleString()} words &nbsp;·&nbsp; {new Date().toLocaleDateString()}
+              {mode === 'manuscript' ? `Current Manuscript (${loadedSections.join(', ')})` : fileName ?? 'Pasted text'} &nbsp;·&nbsp; {wc.toLocaleString()} words &nbsp;·&nbsp; {new Date().toLocaleDateString()}
             </div>
           </div>
         </div>
