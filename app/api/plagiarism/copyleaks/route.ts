@@ -71,8 +71,9 @@ export async function POST(req: Request) {
           filename: `manuscript_${scanId}.txt`,
           properties: {
             webhooks: {
-              // Embed scanId in URL — more reliable than developerPayload
-              status: `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
+              status:    `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
+              completed: `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
+              error:     `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
             },
             sensitiveDataProtection: { anonymizeText: true },
             scanning: { internet: true, copyleaksDatabaseAccess: true },
