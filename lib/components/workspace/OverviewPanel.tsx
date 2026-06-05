@@ -70,7 +70,7 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
   const [litQuery, setLitQuery]         = useState(projectTitle || '')
   const [litSavedIds, setLitSavedIds]   = useState<Set<string>>(new Set())
   const [litAddingId, setLitAddingId]   = useState<string | null>(null)
-  const showLit = LITERATURE_TYPES.has(studyType || '')
+  const showLit = true
   const litDebounce = useRef<NodeJS.Timeout | null>(null)
 
   const editorSections = (manuscriptSections ?? []).filter(s => s !== 'Plagiarism Check')
