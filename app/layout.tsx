@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { DM_Sans, Cormorant_Garamond, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import PosthogProvider from '@/lib/components/PosthogProvider';
+import { Analytics } from '@vercel/analytics/next';
 
 const dmSans = DM_Sans({
   variable: "--font-inter",
@@ -53,6 +54,7 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <PosthogProvider />
         {children}
+        <Analytics />
       </body>
     </html>
   );
