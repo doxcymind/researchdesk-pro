@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js'
 
 const COPYLEAKS_EMAIL = process.env.COPYLEAKS_EMAIL
 const COPYLEAKS_KEY   = process.env.COPYLEAKS_KEY
-const SITE_URL        = process.env.NEXT_PUBLIC_SITE_URL || 'https://researchdesk-pro.vercel.app'
+const SITE_URL        = process.env.NEXT_PUBLIC_SITE_URL || 'https://researchdeskpro.com'
 
 function getAdmin() {
   return createClient(

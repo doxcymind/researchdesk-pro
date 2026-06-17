@@ -92,7 +92,7 @@ export function WelcomeEmail({ name }: WelcomeEmailProps) {
                     <table width="100%" cellPadding={0} cellSpacing={0} style={{ marginTop: 36 }}>
                       <tr>
                         <td align="center">
-                          <a href="https://researchdesk-pro.vercel.app/dashboard" style={{
+                          <a href="https://researchdeskpro.com/dashboard" style={{
                             display: 'inline-block',
                             background: 'linear-gradient(135deg, #e0b545 0%, #a06808 100%)',
                             color: '#0a0600', padding: '14px 36px', borderRadius: 10,
@@ -117,8 +117,8 @@ export function WelcomeEmail({ name }: WelcomeEmailProps) {
                   }}>
                     <p style={{ fontSize: 12, color: 'rgba(200,175,130,0.3)', margin: 0, lineHeight: 1.6 }}>
                       ResearchDesk Pro · Built for the medical research community<br/>
-                      <a href="https://researchdesk-pro.vercel.app" style={{ color: 'rgba(201,148,58,0.4)', textDecoration: 'none' }}>
-                        researchdesk-pro.vercel.app
+                      <a href="https://researchdeskpro.com" style={{ color: 'rgba(201,148,58,0.4)', textDecoration: 'none' }}>
+                        researchdeskpro.com
                       </a>
                     </p>
                   </td>

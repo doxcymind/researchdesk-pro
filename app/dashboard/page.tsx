@@ -6,15 +6,18 @@ import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import LiveClock from '@/lib/components/dashboard/LiveClock'
 const PubMedFeed = lazy(() => import('@/lib/components/dashboard/PubMedFeed'))
+const OrcidProfile = lazy(() => import('@/lib/components/dashboard/OrcidProfile'))
 import WorkflowGuide from '@/lib/components/dashboard/WorkflowGuide'
 import DynamicDashboard from '@/lib/components/dashboard/DynamicDashboard'
 import { useSessionGuard } from '@/lib/hooks/useSessionGuard'
+import FloatingIcons from '@/lib/components/FloatingIcons'
 
 const NAV = [
   { label: 'Dashboard',   icon: '◈', href: '/dashboard' },
   { label: 'All Projects', icon: '⬡', href: '/projects' },
   { label: 'New Project', icon: '+', href: '/new-project' },
   { label: 'Tools',       icon: '🔧', href: '/tools' },
+  { label: 'Profile',     icon: '✦', href: '/profile' },
   { label: 'Settings',    icon: '⚙', href: '/settings' },
 ]
 
@@ -141,7 +144,9 @@ export default function DashboardPage() {
         </nav>
 
         <div className="workspace-sidebar-bottom" style={{ padding: '20px 16px 0', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <Link href="/profile" title="View your profile" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', padding: '6px', margin: '-6px -6px 6px', borderRadius: 10, transition: 'background 0.18s' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background='transparent')}>
             <div style={{
               width: 36, height: 36, borderRadius: '50%',
               background: 'linear-gradient(135deg, #c9943a, #8b6914)',
@@ -150,7 +155,7 @@ export default function DashboardPage() {
               boxShadow: '0 0 12px rgba(201,148,58,0.3)',
             }}>{initials}</div>
             <span style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>
-          </div>
+          </Link>
           <button
             onClick={signOut}
             style={{ width: '100%', padding: '8px 0', borderRadius: 8, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: 'rgba(240,232,208,0.35)', fontSize: 12, cursor: 'pointer', transition: 'all 0.18s' }}
@@ -169,6 +174,7 @@ export default function DashboardPage() {
           <div style={{ position: 'absolute', top: '40%', right: '-5%', width: 400, height: 400, borderRadius: '50%', background: 'radial-gradient(circle, rgba(167,139,250,0.05) 0%, transparent 65%)', animation: 'auroraFloat 16s ease-in-out infinite reverse' }} />
           <div style={{ position: 'absolute', bottom: '10%', left: '10%', width: 300, height: 300, borderRadius: '50%', background: 'radial-gradient(circle, rgba(52,211,153,0.04) 0%, transparent 65%)', animation: 'auroraFloat 20s ease-in-out infinite' }} />
         </div>
+        <FloatingIcons />
 
         <div style={{ position: 'relative', zIndex: 1 }}>
 
@@ -251,6 +257,11 @@ export default function DashboardPage() {
 
           {/* ── DYNAMIC: Streak + Recent + Progress ── */}
           <DynamicDashboard projects={projects} />
+
+          {/* Author's own ORCID profile + publications — lazy loaded */}
+          <Suspense fallback={null}>
+            <OrcidProfile />
+          </Suspense>
 
           {/* PubMed Feed — lazy loaded so it never blocks dashboard render */}
           <Suspense fallback={null}>

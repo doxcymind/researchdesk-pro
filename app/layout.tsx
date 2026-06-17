@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { DM_Sans, Cormorant_Garamond, Playfair_Display } from "next/font/google";
+import { DM_Sans, Cormorant_Garamond, Playfair_Display, Fraunces, Bodoni_Moda, Hanken_Grotesk } from "next/font/google";
 import "./globals.css";
 import PosthogProvider from '@/lib/components/PosthogProvider';
 import { Analytics } from '@vercel/analytics/next';
@@ -20,6 +20,25 @@ const cormorant = Cormorant_Garamond({
   variable: "--font-cinzel",
   subsets: ["latin"],
   weight: ["300", "400", "500", "600", "700"],
+});
+
+// Editorial Luxe set (used on the researcher profile page)
+const fraunces = Fraunces({
+  variable: "--font-fraunces",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const bodoni = Bodoni_Moda({
+  variable: "--font-bodoni",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+});
+
+const hanken = Hanken_Grotesk({
+  variable: "--font-hanken",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -49,7 +68,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${dmSans.variable} ${playfair.variable} ${cormorant.variable} h-full antialiased`}
+      className={`${dmSans.variable} ${playfair.variable} ${cormorant.variable} ${fraunces.variable} ${bodoni.variable} ${hanken.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
         <PosthogProvider />

@@ -1,7 +1,7 @@
 export const dynamic = 'force-dynamic'
-import Razorpay from 'razorpay'
 import { getAuthUser } from '@/lib/auth-helper'
 import { createClient } from '@supabase/supabase-js'
+import { CASHFREE_BASE, cashfreeHeaders } from '@/lib/cashfree'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -12,7 +12,6 @@ const WHITELISTED_EMAILS = [
   'nechmed0080@gmail.com',
   'gaur.gsvm@gmail.com',
   'pheonixfire968@gmail.com',
-  'itsthetimemsd@gmail.com',
 ]
 
 export async function POST(req: Request) {
@@ -28,14 +27,14 @@ export async function POST(req: Request) {
     return Response.json({ success: true, reason: 'whitelist' })
   }
 
-  // Check if user has a Razorpay subscription ID stored
+  // Check if user has a Cashfree subscription ID stored
   const { data: profile } = await supabase
     .from('profiles')
-    .select('razorpay_subscription_id, subscription_status')
+    .select('cashfree_subscription_id, subscription_status')
     .eq('id', user.id)
     .single()
 
-  if (!profile?.razorpay_subscription_id) {
+  if (!profile?.cashfree_subscription_id) {
     return Response.json({ error: 'No subscription found' }, { status: 404 })
   }
 
@@ -44,26 +43,27 @@ export async function POST(req: Request) {
     return Response.json({ success: true, reason: 'already_active' })
   }
 
-  // Verify with Razorpay API
+  // Verify with Cashfree API
   try {
-    const razorpay = new Razorpay({
-      key_id: process.env.RAZORPAY_KEY_ID!,
-      key_secret: process.env.RAZORPAY_KEY_SECRET!,
-    })
+    const res = await fetch(
+      `${CASHFREE_BASE}/subscriptions/${profile.cashfree_subscription_id}`,
+      { headers: cashfreeHeaders() }
+    )
+    const sub = await res.json()
 
-    const sub = await razorpay.subscriptions.fetch(profile.razorpay_subscription_id) as any
-
-    // Activate if subscription is in any valid state (created, authenticated, active)
-    const validStates = ['created', 'authenticated', 'active']
-    if (validStates.includes(sub.status)) {
+    // Mandate approved (trial active or billing live) => grant access.
+    if (sub?.subscription_status === 'ACTIVE') {
       await supabase.from('profiles').upsert({
         id: user.id,
         subscription_status: 'scholar',
       })
-      return Response.json({ success: true, reason: 'razorpay_verified', status: sub.status })
+      return Response.json({ success: true, reason: 'cashfree_verified' })
     }
 
-    return Response.json({ error: `Subscription status: ${sub.status}` }, { status: 402 })
+    return Response.json(
+      { error: `Subscription status: ${sub?.subscription_status ?? 'unknown'}` },
+      { status: 402 }
+    )
   } catch (e: any) {
     return Response.json({ error: e?.message || 'Failed to verify' }, { status: 500 })
   }

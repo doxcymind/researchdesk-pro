@@ -20,17 +20,6 @@ const MANUSCRIPT_SECTIONS: Record<string, string[]> = {
 }
 const DEFAULT_SECTIONS = ['Abstract', 'Introduction', 'Methods', 'Results', 'Discussion', 'References']
 
-function relTime(iso: string) {
-  const diff = Date.now() - new Date(iso).getTime()
-  const m = Math.floor(diff / 60000)
-  if (m < 1) return 'just now'
-  if (m < 60) return `${m}m ago`
-  const h = Math.floor(m / 60)
-  if (h < 24) return `${h}h ago`
-  const d = Math.floor(h / 24)
-  return `${d}d ago`
-}
-
 /* ── Writing streak helpers ── */
 function getTodayKey() {
   return new Date().toISOString().slice(0, 10) // "YYYY-MM-DD"
@@ -64,13 +53,6 @@ export function bumpStreak() {
   } catch {}
 }
 
-interface RecentItem {
-  action: string
-  projectTitle: string
-  projectId: number
-  createdAt: string
-}
-
 interface ProjectProgress {
   id: number
   title: string
@@ -80,7 +62,6 @@ interface ProjectProgress {
 }
 
 export default function DynamicDashboard({ projects }: { projects: any[] }) {
-  const [recent, setRecent]     = useState<RecentItem | null>(null)
   const [progress, setProgress] = useState<ProjectProgress[]>([])
   const [streak, setStreak]     = useState(0)
   const [loaded, setLoaded]     = useState(false)
@@ -99,21 +80,7 @@ export default function DynamicDashboard({ projects }: { projects: any[] }) {
 
       const projectIds = projects.map(p => p.id)
 
-      // Fire both queries in parallel
-      const [logsRes, sectionsRes] = await Promise.all([
-        supabase.from('activity_logs').select('action, project_id, created_at').in('project_id', projectIds).eq('user_id', user.id).order('created_at', { ascending: false }).limit(1),
-        supabase.from('project_sections').select('project_id, section, content').in('project_id', projectIds).eq('user_id', user.id),
-      ])
-
-      if (logsRes.data?.[0]) {
-        const proj = projects.find(p => p.id === logsRes.data![0].project_id)
-        setRecent({
-          action: logsRes.data[0].action,
-          projectTitle: proj?.title || 'Project',
-          projectId: logsRes.data[0].project_id,
-          createdAt: logsRes.data[0].created_at,
-        })
-      }
+      const sectionsRes = await supabase.from('project_sections').select('project_id, section, content').in('project_id', projectIds).eq('user_id', user.id)
 
       const sections = sectionsRes.data || []
       const progressData: ProjectProgress[] = projects.map(p => {
@@ -184,7 +151,7 @@ export default function DynamicDashboard({ projects }: { projects: any[] }) {
         </div>
       )}
 
-      {/* ── RIGHT: Streak + Last Activity ── */}
+      {/* ── RIGHT: Streak ── */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
 
         {/* Streak card */}
@@ -207,40 +174,6 @@ export default function DynamicDashboard({ projects }: { projects: any[] }) {
           <div style={{ fontSize: 11, color: 'rgba(240,232,208,0.25)', marginTop: 6, lineHeight: 1.5 }}>
             {streak === 0 ? 'Write today to start your streak' : streak === 1 ? 'Keep going — write again tomorrow!' : `${streak} consecutive days of writing`}
           </div>
-        </div>
-
-        {/* Recent activity card */}
-        <div style={{
-          padding: '20px 22px', borderRadius: 16,
-          background: 'rgba(255,255,255,0.02)',
-          border: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex', flexDirection: 'column', justifyContent: 'space-between',
-        }}>
-          <div style={{ fontSize: 11, color: 'rgba(201,148,58,0.5)', textTransform: 'uppercase', letterSpacing: '0.12em', fontWeight: 700, marginBottom: 12 }}>
-            ⟳ &nbsp;Last Activity
-          </div>
-          {recent ? (
-            <>
-              <div>
-                <p style={{ fontSize: 14, fontWeight: 600, color: '#f0e8d0', margin: '0 0 4px' }}>{recent.action}</p>
-                <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>{recent.projectTitle ? recent.projectTitle.charAt(0).toUpperCase() + recent.projectTitle.slice(1) : ''}</p>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 16 }}>
-                <span style={{ fontSize: 11, color: 'rgba(240,232,208,0.2)' }}>{relTime(recent.createdAt)}</span>
-                <Link href={`/workspace/${recent.projectId}`} style={{
-                  fontSize: 11, fontWeight: 700, color: '#c9943a', textDecoration: 'none',
-                  padding: '5px 14px', borderRadius: 8,
-                  background: 'rgba(201,148,58,0.08)', border: '1px solid rgba(201,148,58,0.2)',
-                  transition: 'all 0.18s',
-                }}
-                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,148,58,0.15)')}
-                  onMouseLeave={e => (e.currentTarget.style.background = 'rgba(201,148,58,0.08)')}
-                >Continue →</Link>
-              </div>
-            </>
-          ) : (
-            <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.2)', margin: 0 }}>No activity yet — open a project and start writing.</p>
-          )}
         </div>
 
       </div>

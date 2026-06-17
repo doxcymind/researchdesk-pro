@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSubscription } from '@/lib/hooks/useSubscription'
-import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { openCashfreeCheckout } from '@/lib/hooks/useCashfree'
+import FloatingIcons from '@/lib/components/FloatingIcons'
 
 interface Project { id: number; title: string; study_type: string; user_id: string; created_at: string }
 
@@ -27,6 +28,7 @@ const NAV = [
   { label: 'All Projects', icon: '⬡', href: '/projects' },
   { label: 'New Project', icon: '+', href: '/new-project' },
   { label: 'Tools',       icon: '🔧', href: '/tools' },
+  { label: 'Profile',     icon: '✦', href: '/profile' },
   { label: 'Settings',    icon: '⚙', href: '/settings' },
 ]
 
@@ -44,7 +46,7 @@ export default function ProjectsPage() {
   const handleUpgrade = async () => {
     setUpgrading(true)
     setPaymentError(null)
-    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
+    await openCashfreeCheckout(undefined, (msg) => setPaymentError(msg))
     setUpgrading(false)
   }
 
@@ -87,7 +89,8 @@ export default function ProjectsPage() {
   }
 
   return (
-    <div className="workspace-layout" style={{ background: '#080c18', fontFamily: "var(--font-inter), 'DM Sans', system-ui, sans-serif", color: '#f0e8d0' }}>
+    <div className="workspace-layout" style={{ position: 'relative', background: '#080c18', fontFamily: "var(--font-inter), 'DM Sans', system-ui, sans-serif", color: '#f0e8d0' }}>
+      <FloatingIcons />
 
       {/* SIDEBAR */}
       <aside className="workspace-sidebar">
@@ -127,10 +130,12 @@ export default function ProjectsPage() {
         </nav>
 
         <div className="workspace-sidebar-bottom" style={{ padding: '20px 16px 0', borderTop: '1px solid rgba(255,255,255,0.06)', marginTop: 16 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+          <Link href="/profile" title="View your profile" style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, textDecoration: 'none', padding: '6px', margin: '-6px -6px 6px', borderRadius: 10, transition: 'background 0.18s' }}
+            onMouseEnter={e => ((e.currentTarget as HTMLElement).style.background='rgba(255,255,255,0.04)')}
+            onMouseLeave={e => ((e.currentTarget as HTMLElement).style.background='transparent')}>
             <div style={{ width: 34, height: 34, borderRadius: '50%', background: 'linear-gradient(135deg, #c9943a, #8b6914)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14, fontWeight: 700, color: '#080c18', flexShrink: 0, boxShadow: '0 0 10px rgba(201,148,58,0.25)' }}>{initials}</div>
             <span style={{ fontSize: 12, color: 'rgba(240,232,208,0.4)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{email}</span>
-          </div>
+          </Link>
           <button onClick={signOut}
             style={{ width: '100%', padding: '8px 0', borderRadius: 8, border: '1px solid rgba(255,255,255,0.07)', background: 'transparent', color: 'rgba(240,232,208,0.35)', fontSize: 12, cursor: 'pointer', transition: 'all 0.18s' }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.borderColor='rgba(248,113,113,0.25)'; (e.currentTarget as HTMLElement).style.color='rgba(248,113,113,0.7)' }}

@@ -1,6 +1,12 @@
 'use client'
 
 import { useEffect, useRef, useCallback, useState } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import { BubbleMenu } from '@tiptap/react/menus'
+import StarterKit from '@tiptap/starter-kit'
+import Underline from '@tiptap/extension-underline'
+import Superscript from '@tiptap/extension-superscript'
+import { Table, TableRow, TableCell, TableHeader } from '@tiptap/extension-table'
 
 interface ReviewIssue {
   type: 'error' | 'warning' | 'success'
@@ -144,7 +150,9 @@ const SECTION_GUIDANCE: Record<string, { what: string; structure: string[]; tip:
 }
 
 function wordCount(text: string): number {
-  return text.trim() === '' ? 0 : text.trim().split(/\s+/).length
+  // Strip HTML tags for accurate word count
+  const plain = text.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  return plain === '' ? 0 : plain.split(/\s+/).length
 }
 
 const ISSUE_CONFIG = {
@@ -174,27 +182,145 @@ function ScoreRing({ score }: { score: number }) {
   )
 }
 
+// ── Toolbar button ──────────────────────────────────────────
+function ToolbarBtn({ onClick, active, disabled, title, children }: {
+  onClick: () => void; active?: boolean; disabled?: boolean; title: string; children: React.ReactNode
+}) {
+  return (
+    <button
+      onMouseDown={e => { e.preventDefault(); onClick() }}
+      disabled={disabled}
+      title={title}
+      style={{
+        padding: '5px 9px', borderRadius: 7, border: 'none', cursor: disabled ? 'not-allowed' : 'pointer',
+        background: active ? 'rgba(201,148,58,0.25)' : 'transparent',
+        color: active ? '#e8b84a' : disabled ? 'rgba(240,232,208,0.2)' : 'rgba(240,232,208,0.6)',
+        fontSize: 13, fontWeight: active ? 700 : 500, transition: 'all 0.15s', lineHeight: 1,
+      }}
+    >{children}</button>
+  )
+}
+
+// ── Divider ──────────────────────────────────────────────────
+function ToolbarDivider() {
+  return <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.1)', margin: '0 2px', flexShrink: 0 }} />
+}
+
 export default function EditorPanel({
   selectedSection, content, setContent, saving,
   reviewing, reviewData, onReview, onCloseReview, onSave, onKeywordsGenerated,
   sectionWordLimit,
 }: EditorPanelProps) {
-  const count = wordCount(content)
-  // Use journal-specific limit if provided, else fall back to defaults
   const limit = sectionWordLimit ?? DEFAULT_WORD_LIMITS[selectedSection] ?? 0
   const isJournalLimit = sectionWordLimit != null
-  const isOver = limit > 0 && count > limit
   const panelRef = useRef<HTMLDivElement>(null)
   const [copied, setCopied] = useState(false)
   const [keywords, setKeywords] = useState<string[]>([])
   const [keywordsLoading, setKeywordsLoading] = useState(false)
   const [copiedKw, setCopiedKw] = useState<string | null>(null)
+  const [aiAction, setAiAction] = useState<string | null>(null)
+  const [showTableMenu, setShowTableMenu] = useState(false)
+  const citationCountRef = useRef(0)
   const isAbstract = selectedSection === 'Abstract'
   const guidance = SECTION_GUIDANCE[selectedSection]
-  const isEmpty = content.trim().length < 10
+
+  // ── Table templates ──────────────────────────────────────────
+  const TABLE_TEMPLATES: { label: string; cols: number; rows: number }[] = [
+    { label: '2 columns × 3 rows', cols: 2, rows: 3 },
+    { label: '3 columns × 3 rows', cols: 3, rows: 3 },
+    { label: '4 columns × 3 rows', cols: 4, rows: 3 },
+    { label: '3 columns × 5 rows', cols: 3, rows: 5 },
+    { label: '5 columns × 4 rows', cols: 5, rows: 4 },
+  ]
+
+  const insertTableTemplate = (template: { label: string; cols: number; rows: number }) => {
+    if (!editor) return
+    setShowTableMenu(false)
+    editor.chain().focus().insertTable({ rows: template.rows, cols: template.cols, withHeaderRow: true }).run()
+  }
+
+  const insertCitation = () => {
+    if (!editor) return
+    citationCountRef.current += 1
+    editor.chain().focus().insertContent(`<sup>[${citationCountRef.current}]</sup>`).run()
+  }
+
+  const insertFigure = () => {
+    if (!editor) return
+    editor.chain().focus().insertContent(
+      `<p><em>[Figure ${citationCountRef.current + 1}: Add figure description here]</em></p>`
+    ).run()
+  }
+
+  // ── TipTap editor ──────────────────────────────────────────
+  const editor = useEditor({
+    extensions: [
+      StarterKit.configure({ heading: false, codeBlock: false, code: false }),
+      Underline,
+      Superscript,
+      Table.configure({ resizable: false }),
+      TableRow,
+      TableHeader,
+      TableCell,
+    ],
+    content: content || '',
+    onUpdate: ({ editor }) => {
+      setContent(editor.getHTML())
+    },
+    editorProps: {
+      attributes: {
+        class: 'tiptap-editor',
+        spellcheck: 'true',
+      },
+    },
+  })
+
+  // Sync external content changes (section switch + initial load) into TipTap
+  const lastSection = useRef(selectedSection)
+  const isInitialized = useRef(false)
+  useEffect(() => {
+    if (!editor) return
+    // Initial load: content arrives from DB after editor mounts
+    if (!isInitialized.current) {
+      if (content) {
+        isInitialized.current = true
+        editor.commands.setContent(content)
+      }
+      return
+    }
+    // Section switch: load new section's content
+    if (lastSection.current !== selectedSection) {
+      lastSection.current = selectedSection
+      isInitialized.current = false // reset so next content load triggers hydration
+      editor.commands.setContent(content || '')
+    }
+  }, [selectedSection, content, editor])
+
+  const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
+  const count = wordCount(content)
+  const isOver = limit > 0 && count > limit
+  const isEmpty = plainText.length < 10
+
+  const runAiAction = async (action: string) => {
+    if (!editor || aiAction) return
+    const { from, to } = editor.state.selection
+    if (from === to) return
+    const selectedText = editor.state.doc.textBetween(from, to, ' ')
+    if (!selectedText.trim()) return
+    setAiAction(action)
+    try {
+      const { apiFetch } = await import('@/lib/api-fetch')
+      const res = await apiFetch('/api/ai-edit', { method: 'POST', body: JSON.stringify({ text: selectedText, action }) })
+      const data = await res.json()
+      if (data.result) {
+        editor.chain().focus().deleteRange({ from, to }).insertContentAt(from, data.result).run()
+      }
+    } catch {}
+    setAiAction(null)
+  }
 
   const suggestKeywords = async () => {
-    if (!content.trim() || keywordsLoading) return
+    if (!plainText || keywordsLoading) return
     setKeywordsLoading(true)
     setKeywords([])
     try {
@@ -222,11 +348,11 @@ export default function EditorPanel({
   }
 
   const copyToClipboard = useCallback(async () => {
-    if (!content.trim()) return
-    await navigator.clipboard.writeText(content)
+    if (!plainText) return
+    await navigator.clipboard.writeText(plainText)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
-  }, [content])
+  }, [plainText])
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -240,7 +366,7 @@ export default function EditorPanel({
     if (reviewData && panelRef.current) panelRef.current.scrollTop = 0
   }, [reviewData])
 
-  const canReview = content.trim().length >= 20
+  const canReview = plainText.length >= 20
 
   return (
     <div className="editor-root" style={{ display: 'flex', gap: 20, alignItems: 'flex-start' }}>
@@ -312,26 +438,26 @@ export default function EditorPanel({
             )}
           </button>
 
-          <button onClick={copyToClipboard} disabled={!content.trim()}
+          <button onClick={copyToClipboard} disabled={!plainText}
             style={{
               display: 'flex', alignItems: 'center', gap: 7,
               padding: '9px 18px', borderRadius: 10,
               background: copied ? 'rgba(52,211,153,0.1)' : 'rgba(255,255,255,0.04)',
               border: copied ? '1px solid rgba(52,211,153,0.25)' : '1px solid rgba(255,255,255,0.08)',
-              color: copied ? '#34d399' : !content.trim() ? 'rgba(240,232,208,0.2)' : 'rgba(240,232,208,0.6)',
-              fontSize: 13, fontWeight: 500, cursor: !content.trim() ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
+              color: copied ? '#34d399' : !plainText ? 'rgba(240,232,208,0.2)' : 'rgba(240,232,208,0.6)',
+              fontSize: 13, fontWeight: 500, cursor: !plainText ? 'not-allowed' : 'pointer', transition: 'all 0.2s',
             }}>
             <span>{copied ? '✓' : '⎘'}</span> {copied ? 'Copied!' : 'Copy'}
           </button>
 
           {isAbstract && (
-            <button onClick={suggestKeywords} disabled={keywordsLoading || !content.trim()}
+            <button onClick={suggestKeywords} disabled={keywordsLoading || !plainText}
               style={{
                 display: 'flex', alignItems: 'center', gap: 7,
                 padding: '9px 18px', borderRadius: 10,
                 background: 'rgba(99,179,237,0.06)', border: '1px solid rgba(99,179,237,0.2)',
-                color: keywordsLoading || !content.trim() ? 'rgba(99,179,237,0.3)' : 'rgba(99,179,237,0.8)',
-                fontSize: 13, fontWeight: 600, cursor: keywordsLoading || !content.trim() ? 'not-allowed' : 'pointer',
+                color: keywordsLoading || !plainText ? 'rgba(99,179,237,0.3)' : 'rgba(99,179,237,0.8)',
+                fontSize: 13, fontWeight: 600, cursor: keywordsLoading || !plainText ? 'not-allowed' : 'pointer',
                 transition: 'all 0.2s', fontFamily: 'inherit',
               }}>
               {keywordsLoading
@@ -341,22 +467,144 @@ export default function EditorPanel({
           )}
         </div>
 
-        {/* Textarea */}
-        <textarea
-          value={content}
-          onChange={(e) => setContent(e.target.value)}
-          placeholder={guidance ? `Start writing your ${selectedSection.toLowerCase()} here…\n\nYour AI mentor will review what you write and guide you to improve it.` : `Write ${selectedSection.toLowerCase()} here…`}
-          className="editor-textarea"
+        {/* ── Toolbar ── */}
+        <div style={{
+          display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
+          padding: '8px 12px', borderRadius: '14px 14px 0 0',
+          background: 'rgba(255,255,255,0.03)', border: '1px solid rgba(255,255,255,0.09)',
+          borderBottom: 'none',
+        }}>
+          <ToolbarBtn title="Bold (⌘B)" active={editor?.isActive('bold')} onClick={() => editor?.chain().focus().toggleBold().run()}>B</ToolbarBtn>
+          <ToolbarBtn title="Italic (⌘I)" active={editor?.isActive('italic')} onClick={() => editor?.chain().focus().toggleItalic().run()}><em>I</em></ToolbarBtn>
+          <ToolbarBtn title="Underline (⌘U)" active={editor?.isActive('underline')} onClick={() => editor?.chain().focus().toggleUnderline().run()}><u>U</u></ToolbarBtn>
+          <ToolbarBtn title="Superscript — for citation numbers [1]" active={editor?.isActive('superscript')} onClick={() => editor?.chain().focus().toggleSuperscript().run()}>x²</ToolbarBtn>
+          <ToolbarDivider />
+          <div style={{ position: 'relative' }}>
+            <ToolbarBtn
+              title="List"
+              active={editor?.isActive('bulletList') || editor?.isActive('orderedList')}
+              onClick={() => {
+                const el = document.getElementById('list-menu')
+                if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none'
+              }}
+            >☰ List ▾</ToolbarBtn>
+            <div id="list-menu" style={{
+              display: 'none', position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: 4,
+              background: '#0d1120', border: '1px solid rgba(201,148,58,0.3)', borderRadius: 10,
+              minWidth: 160, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden',
+            }}>
+              {[
+                { label: '• Bullet List', action: () => editor?.chain().focus().toggleBulletList().run() },
+                { label: '1. Numbered List', action: () => editor?.chain().focus().toggleOrderedList().run() },
+              ].map(item => (
+                <button key={item.label} onMouseDown={e => { e.preventDefault(); item.action(); const el = document.getElementById('list-menu'); if (el) el.style.display = 'none' }}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px',
+                    background: 'none', border: 'none', color: 'rgba(240,232,208,0.7)', fontSize: 13,
+                    cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                  }}
+                  onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,148,58,0.1)')}
+                  onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                >{item.label}</button>
+              ))}
+            </div>
+          </div>
+          <ToolbarDivider />
+          <ToolbarBtn
+            title="Insert table"
+            onClick={() => editor?.chain().focus().insertTable({ rows: 3, cols: 3, withHeaderRow: true }).run()}
+          >⊞ Table</ToolbarBtn>
+          {editor?.isActive('table') && <>
+            <ToolbarBtn title="Add column after" onClick={() => editor.chain().focus().addColumnAfter().run()}>+Col</ToolbarBtn>
+            <ToolbarBtn title="Add row after" onClick={() => editor.chain().focus().addRowAfter().run()}>+Row</ToolbarBtn>
+            <ToolbarBtn title="Delete column" onClick={() => editor.chain().focus().deleteColumn().run()}>−Col</ToolbarBtn>
+            <ToolbarBtn title="Delete row" onClick={() => editor.chain().focus().deleteRow().run()}>−Row</ToolbarBtn>
+            <ToolbarBtn title="Delete table" onClick={() => editor.chain().focus().deleteTable().run()}>✕ Table</ToolbarBtn>
+          </>}
+          <ToolbarDivider />
+          {/* Table Templates */}
+          <div style={{ position: 'relative' }}>
+            <ToolbarBtn title="Insert table" onClick={() => setShowTableMenu(v => !v)}>⊞ Insert Table ▾</ToolbarBtn>
+            {showTableMenu && (
+              <div style={{
+                position: 'absolute', top: '100%', left: 0, zIndex: 100, marginTop: 4,
+                background: '#0d1120', border: '1px solid rgba(201,148,58,0.3)', borderRadius: 10,
+                minWidth: 200, boxShadow: '0 8px 32px rgba(0,0,0,0.5)', overflow: 'hidden',
+              }}>
+                {TABLE_TEMPLATES.map(t => (
+                  <button key={t.label} onMouseDown={e => { e.preventDefault(); insertTableTemplate(t) }}
+                    style={{ display: 'block', width: '100%', textAlign: 'left', padding: '9px 14px',
+                      background: 'none', border: 'none', color: 'rgba(240,232,208,0.7)', fontSize: 13,
+                      cursor: 'pointer', borderBottom: '1px solid rgba(255,255,255,0.05)',
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(201,148,58,0.1)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'none')}
+                  >{t.label}</button>
+                ))}
+              </div>
+            )}
+          </div>
+          <ToolbarDivider />
+          <ToolbarBtn title="Insert citation superscript [n]" onClick={insertCitation}>¹ Citation</ToolbarBtn>
+          <ToolbarBtn title="Insert figure placeholder" onClick={insertFigure}>🖼 Figure</ToolbarBtn>
+        </div>
+
+        {/* ── TipTap Editor ── */}
+        <div
+          className="tiptap-wrapper"
           style={{
-            width: '100%', height: 460,
-            background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.09)',
-            borderRadius: 14, padding: '20px 24px', fontSize: 15,
-            lineHeight: 1.75, color: '#f0e8d0', outline: 'none', resize: 'none',
-            fontFamily: 'Inter, system-ui, sans-serif', transition: 'border-color 0.2s',
+            minHeight: 460, background: 'rgba(255,255,255,0.04)',
+            border: '1px solid rgba(255,255,255,0.09)', borderRadius: '0 0 14px 14px',
+            padding: '20px 24px', cursor: 'text',
           }}
-          onFocus={e => (e.target.style.borderColor = 'rgba(201,148,58,0.35)')}
-          onBlur={e => (e.target.style.borderColor = 'rgba(255,255,255,0.09)')}
-        />
+          onClick={() => editor?.commands.focus()}
+        >
+          {isEmpty && !editor?.isFocused && (
+            <p style={{
+              position: 'absolute', pointerEvents: 'none',
+              fontSize: 15, color: 'rgba(240,232,208,0.25)', lineHeight: 1.75, margin: 0,
+            }}>
+              {guidance ? `Start writing your ${selectedSection.toLowerCase()} here…` : `Write ${selectedSection.toLowerCase()} here…`}
+            </p>
+          )}
+          {/* ── AI Bubble Menu on text selection ── */}
+          {editor && (
+            <BubbleMenu editor={editor}>
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 3,
+                background: '#0d1120', border: '1px solid rgba(201,148,58,0.4)',
+                borderRadius: 10, padding: '5px 6px',
+                boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+              }}>
+                {aiAction ? (
+                  <span style={{ fontSize: 12, color: '#c9943a', padding: '4px 10px', display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span style={{ animation: 'spin 1s linear infinite', display: 'inline-block' }}>◌</span>
+                    {aiAction === 'improve' ? 'Improving…' : aiAction === 'shorten' ? 'Shortening…' : aiAction === 'expand' ? 'Expanding…' : aiAction === 'journal' ? 'Styling…' : 'Checking…'}
+                  </span>
+                ) : (
+                  <>
+                    {[
+                      { key: 'improve', label: '✦ Improve', title: 'Improve academic writing' },
+                      { key: 'shorten', label: '↙ Shorten', title: 'Shorten the text' },
+                      { key: 'expand',  label: '↗ Expand',  title: 'Expand with more detail' },
+                      { key: 'journal', label: '📄 Journal Style', title: 'Rewrite in journal-ready style' },
+                      { key: 'grammar', label: '✓ Grammar', title: 'Fix grammar and spelling' },
+                    ].map(({ key, label, title }) => (
+                      <button key={key} onClick={() => runAiAction(key)} title={title} style={{
+                        padding: '5px 10px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                        background: 'transparent', color: 'rgba(240,232,208,0.75)',
+                        fontSize: 12, fontWeight: 600, transition: 'all 0.15s', whiteSpace: 'nowrap',
+                      }}
+                      onMouseEnter={e => { e.currentTarget.style.background = 'rgba(201,148,58,0.15)'; e.currentTarget.style.color = '#e8b84a' }}
+                      onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = 'rgba(240,232,208,0.75)' }}
+                      >{label}</button>
+                    ))}
+                  </>
+                )}
+              </div>
+            </BubbleMenu>
+          )}
+          <EditorContent editor={editor} />
+        </div>
 
         {/* Word count */}
         <div style={{ marginTop: 10, padding: '0 4px' }}>
@@ -500,6 +748,29 @@ export default function EditorPanel({
       <style>{`
         @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── TipTap editor styles ── */
+        .tiptap-wrapper { position: relative; }
+        .tiptap-editor { outline: none; min-height: 420px; }
+        .tiptap-editor p { margin: 0 0 10px; font-size: 15px; line-height: 1.75; color: #f0e8d0; font-family: Inter, system-ui, sans-serif; }
+        .tiptap-editor p:last-child { margin-bottom: 0; }
+        .tiptap-editor ul, .tiptap-editor ol { padding-left: 22px; margin: 0 0 10px; color: #f0e8d0; font-size: 15px; line-height: 1.75; }
+        .tiptap-editor li { margin-bottom: 4px; }
+        .tiptap-editor strong { font-weight: 700; color: #f0e8d0; }
+        .tiptap-editor em { font-style: italic; }
+        .tiptap-editor u { text-decoration: underline; }
+        .tiptap-editor sup { font-size: 0.75em; vertical-align: super; color: #c9943a; font-weight: 600; }
+
+        /* Table styles */
+        .tiptap-editor table { border-collapse: collapse; width: 100%; margin: 14px 0; border-radius: 8px; overflow: hidden; }
+        .tiptap-editor th { background: rgba(201,148,58,0.12); color: #e8b84a; font-weight: 700; font-size: 13px; padding: 10px 14px; text-align: left; border: 1px solid rgba(255,255,255,0.1); }
+        .tiptap-editor td { padding: 9px 14px; font-size: 14px; color: rgba(240,232,208,0.8); border: 1px solid rgba(255,255,255,0.08); vertical-align: top; }
+        .tiptap-editor tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+        .tiptap-editor .selectedCell { background: rgba(201,148,58,0.1) !important; }
+
+        .tiptap-wrapper:focus-within { outline: none; }
+        .tiptap-wrapper:focus-within + * { border-color: rgba(201,148,58,0.35); }
+
         @media (max-width: 768px) {
           .editor-root { flex-direction: column !important; }
           .editor-review-panel { width: 100% !important; }
