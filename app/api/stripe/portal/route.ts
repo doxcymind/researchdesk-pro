@@ -22,7 +22,7 @@ export async function POST(req: Request) {
     return Response.json({ error: 'No subscription found' }, { status: 404 })
   }
 
-  const origin = req.headers.get('origin') || 'https://researchdesk-pro.vercel.app'
+  const origin = req.headers.get('origin') || 'https://researchdeskpro.com'
 
   const session = await stripe.billingPortal.sessions.create({
     customer: profile.stripe_customer_id,

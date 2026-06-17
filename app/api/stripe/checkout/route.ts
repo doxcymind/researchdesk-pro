@@ -30,7 +30,7 @@ export async function POST(req: Request) {
     await supabase.from('profiles').upsert({ id: user.id, stripe_customer_id: customerId })
   }
 
-  const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://researchdesk-pro.vercel.app'
+  const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://researchdeskpro.com'
 
   const session = await stripe.checkout.sessions.create({
     customer: customerId,
