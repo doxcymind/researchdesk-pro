@@ -41,7 +41,8 @@ const SECTION_ICONS: Record<string, string> = {
   'Literature Search':    '🔬',
 }
 
-const TOOL_ITEMS = ['Authors','AI Assistant','Uploads','Clinical Trials','DOI Resolver','Journal Selector','Submission Tracker','Cover Letter','Literature Search']
+const RESEARCH_ITEMS = ['Literature Search', 'Clinical Trials', 'DOI Resolver', 'Plagiarism Check']
+const TOOL_ITEMS     = ['Authors', 'AI Assistant', 'Uploads', 'Journal Selector', 'Submission Tracker', 'Cover Letter', ...RESEARCH_ITEMS]
 
 const WORD_TARGETS: Record<string, number> = {
   Abstract: 250, Introduction: 500, 'Case Presentation': 600, 'Case Presentations': 800,
@@ -87,8 +88,9 @@ export default function Sidebar({ sections, selectedSection, setSelectedSection,
         <nav style={{ flex: 1, overflowY: 'auto', padding: '16px 10px' }}>
           {[
             { label: 'MANUSCRIPT', items: sections.filter(s => s !== 'Overview' && !TOOL_ITEMS.includes(s)) },
-            { label: 'TOOLS',      items: sections.filter(s => TOOL_ITEMS.includes(s)) },
-          ].map((group) => (
+            { label: 'RESEARCH',   items: sections.filter(s => RESEARCH_ITEMS.includes(s)) },
+            { label: 'TOOLS',      items: sections.filter(s => TOOL_ITEMS.includes(s) && !RESEARCH_ITEMS.includes(s)) },
+          ].filter(g => g.items.length > 0).map((group) => (
             <div key={group.label} style={{ marginBottom: 20 }}>
               <p style={{ fontSize: 10, fontWeight: 700, color: 'rgba(201,148,58,0.5)', letterSpacing: '0.1em', padding: '0 10px', marginBottom: 6 }}>
                 {group.label}

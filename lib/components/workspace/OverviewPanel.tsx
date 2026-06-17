@@ -83,12 +83,27 @@ export default function OverviewPanel({ projectId, studyType, manuscriptSections
 
   useEffect(() => {
     if (showLit && projectTitle) {
-      // Strip subtitle after dash/colon, then take first 8 words for a focused PubMed query
+      // Let AI extract the best PubMed search query from the title
       const mainTitle = projectTitle.split(/\s*[-:]\s*/)[0].trim()
-      const shortQ = mainTitle.split(/\s+/).slice(0, 8).join(' ')
-      const displayQ = shortQ.charAt(0).toUpperCase() + shortQ.slice(1)
-      setLitQuery(displayQ)
-      fetchLiterature(shortQ)
+      setLitQuery(mainTitle) // show title immediately while AI thinks
+      fetchLiterature(mainTitle) // start search immediately
+      // Async: refine with AI-extracted keywords
+      ;(async () => {
+        try {
+          const { apiFetch } = await import('@/lib/api-fetch')
+          const res = await apiFetch('/api/lit-query', {
+            method: 'POST',
+            body: JSON.stringify({ title: projectTitle }),
+          })
+          const data = await res.json()
+          if (data?.query) {
+            setLitQuery(data.query)
+            fetchLiterature(data.query)
+          }
+        } catch {
+          // fallback already running above
+        }
+      })()
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [showLit, projectTitle])

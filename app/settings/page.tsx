@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { useSubscription } from '@/lib/hooks/useSubscription'
-import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { openCashfreeCheckout } from '@/lib/hooks/useCashfree'
+import FloatingIcons from '@/lib/components/FloatingIcons'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
 const inter  = "var(--font-inter), 'DM Sans', system-ui, sans-serif"
@@ -43,7 +44,7 @@ export default function SettingsPage() {
   const handleUpgrade = async () => {
     setCheckoutLoading(true)
     setPaymentError(null)
-    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
+    await openCashfreeCheckout(undefined, (msg) => setPaymentError(msg))
     setCheckoutLoading(false)
   }
 
@@ -60,9 +61,10 @@ export default function SettingsPage() {
   }, [])
 
   return (
-    <div style={{ background: '#080c18', minHeight: '100vh', color: '#f0e8d0', fontFamily: inter }}>
+    <div style={{ position: 'relative', background: '#080c18', minHeight: '100vh', color: '#f0e8d0', fontFamily: inter }}>
+      <FloatingIcons />
       {/* Nav */}
-      <nav style={{ borderBottom: '1px solid rgba(201,148,58,0.15)', padding: '18px 56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(5,8,15,0.8)', backdropFilter: 'blur(20px)', borderTop: '2px solid rgba(201,148,58,0.5)' }}>
+      <nav style={{ position: 'relative', zIndex: 1, borderBottom: '1px solid rgba(201,148,58,0.15)', padding: '18px 56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(5,8,15,0.8)', backdropFilter: 'blur(20px)', borderTop: '2px solid rgba(201,148,58,0.5)' }}>
         <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="/logo.webp" alt="R" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }}/>
           <span style={{ fontSize: 18, fontWeight: 700, fontFamily: cinzel, letterSpacing: '0.03em' }}>
@@ -72,7 +74,7 @@ export default function SettingsPage() {
         <Link href="/dashboard" style={{ fontSize: 12, color: 'rgba(201,148,58,0.6)', textDecoration: 'none', letterSpacing: '0.06em' }}>← Back to Dashboard</Link>
       </nav>
 
-      <main style={{ maxWidth: 700, margin: '0 auto', padding: 'clamp(24px, 5vw, 64px) clamp(16px, 5vw, 40px)' }}>
+      <main style={{ position: 'relative', zIndex: 1, maxWidth: 700, margin: '0 auto', padding: 'clamp(24px, 5vw, 64px) clamp(16px, 5vw, 40px)' }}>
         {/* Header */}
         <div style={{ marginBottom: 48 }}>
           <p style={{ fontSize: 11, color: 'rgba(201,148,58,0.6)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12, fontFamily: cinzel }}>✦ &nbsp; Settings</p>
@@ -93,6 +95,18 @@ export default function SettingsPage() {
           >Open Tools →</Link>
         </div>
 
+
+        {/* Profile link */}
+        <div style={{ marginBottom: 24, padding: '18px 22px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(201,148,58,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <p style={{ fontSize: 13, fontWeight: 600, color: '#f0e8d0', margin: '0 0 3px' }}>✦ Researcher Profile</p>
+            <p style={{ fontSize: 12, color: 'rgba(240,232,208,0.35)', margin: 0 }}>Manage your display name, ORCID iD and publications</p>
+          </div>
+          <Link href="/profile" style={{ fontSize: 12, fontWeight: 700, color: '#c9943a', textDecoration: 'none', padding: '8px 18px', borderRadius: 9, border: '1px solid rgba(201,148,58,0.25)', background: 'rgba(201,148,58,0.07)', whiteSpace: 'nowrap' }}
+            onMouseEnter={e => (e.currentTarget.style.background='rgba(201,148,58,0.14)')}
+            onMouseLeave={e => (e.currentTarget.style.background='rgba(201,148,58,0.07)')}
+          >Open Profile →</Link>
+        </div>
 
         {/* Billing Card */}
         <div style={{ marginTop: 24, padding: '28px 28px', borderRadius: 16, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(201,148,58,0.15)' }}>

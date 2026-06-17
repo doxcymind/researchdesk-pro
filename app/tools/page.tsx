@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { apiFetch } from '@/lib/api-fetch'
+import FloatingIcons from '@/lib/components/FloatingIcons'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
 const inter  = "var(--font-inter), 'DM Sans', system-ui, sans-serif"
@@ -312,7 +313,8 @@ export default function ToolsPage() {
   }, [])
 
   return (
-    <div style={{ background: '#080c18', minHeight: '100vh', color: '#f0e8d0', fontFamily: inter }}>
+    <div style={{ position: 'relative', background: '#080c18', minHeight: '100vh', color: '#f0e8d0', fontFamily: inter }}>
+      <FloatingIcons />
       <nav style={{ borderBottom: '1px solid rgba(201,148,58,0.15)', padding: '18px 56px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(5,8,15,0.8)', backdropFilter: 'blur(20px)', borderTop: '2px solid rgba(201,148,58,0.5)', position: 'sticky', top: 0, zIndex: 10 }}>
         <Link href="/dashboard" style={{ textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 10 }}>
           <img src="/logo.webp" alt="R" style={{ width: 32, height: 32, borderRadius: 8, objectFit: 'cover' }}/>
@@ -323,7 +325,7 @@ export default function ToolsPage() {
         <Link href="/dashboard" style={{ fontSize: 12, color: 'rgba(201,148,58,0.6)', textDecoration: 'none', letterSpacing: '0.06em' }}>← Back to Dashboard</Link>
       </nav>
 
-      <main style={{ maxWidth: 860, margin: '0 auto', padding: 'clamp(24px, 5vw, 64px) clamp(16px, 5vw, 40px)' }}>
+      <main style={{ position: 'relative', zIndex: 1, maxWidth: 860, margin: '0 auto', padding: 'clamp(24px, 5vw, 64px) clamp(16px, 5vw, 40px)' }}>
         <div style={{ marginBottom: 48 }}>
           <p style={{ fontSize: 11, color: 'rgba(201,148,58,0.6)', letterSpacing: '0.2em', textTransform: 'uppercase', marginBottom: 12, fontFamily: cinzel }}>✦ &nbsp; Integrations</p>
           <h1 style={{ fontSize: 38, fontWeight: 600, color: '#f0e8d0', margin: '0 0 10px', fontFamily: cinzel, lineHeight: 1.1 }}>Tools & Integrations</h1>

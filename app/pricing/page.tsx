@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { useState } from 'react'
-import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { openCashfreeCheckout } from '@/lib/hooks/useCashfree'
 import { supabase } from '@/lib/supabase'
 
 const cinzel = "var(--font-cinzel), 'Cormorant Garamond', Georgia, serif"
@@ -86,7 +86,7 @@ export default function PricingPage() {
     setPaymentError(null)
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) { window.location.href = '/login?next=/pricing'; return }
-    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
+    await openCashfreeCheckout(undefined, (msg) => setPaymentError(msg))
     setUpgrading(false)
   }
 

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { openRazorpayCheckout } from '@/lib/hooks/useRazorpay'
+import { openCashfreeCheckout } from '@/lib/hooks/useCashfree'
 import { apiFetch } from '@/lib/api-fetch'
 
 interface UpgradeModalProps {
@@ -18,7 +18,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
   const handleRestore = async () => {
     setRestoring(true); setRestoreMsg(null)
     try {
-      const res = await apiFetch('/api/razorpay/activate', { method: 'POST' })
+      const res = await apiFetch('/api/cashfree/activate', { method: 'POST' })
       const data = await res.json()
       if (data?.success) {
         setRestoreMsg('✓ Access restored! Reloading…')
@@ -39,7 +39,7 @@ export default function UpgradeModal({ feature, onClose }: UpgradeModalProps) {
   const handleUpgrade = async () => {
     setLoading(true)
     setPaymentError(null)
-    await openRazorpayCheckout(undefined, (msg) => setPaymentError(msg))
+    await openCashfreeCheckout(undefined, (msg) => setPaymentError(msg))
     setLoading(false)
   }
 

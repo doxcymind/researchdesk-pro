@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { supabase } from '@/lib/supabase'
 import { useSubscription } from '@/lib/hooks/useSubscription'
+import FloatingIcons from '@/lib/components/FloatingIcons'
 
 const STUDY_TYPES = [
   { value: 'Case Report',       icon: '📋', desc: 'Single patient case documentation',      color: '#c9943a',  bg: 'rgba(201,148,58,0.1)',   border: 'rgba(201,148,58,0.3)' },
@@ -221,6 +222,7 @@ const NAV = [
   { label: 'All Projects', icon: '⬡', href: '/projects' },
   { label: 'New Project',  icon: '+', href: '/new-project' },
   { label: 'Tools',        icon: '🔧', href: '/tools' },
+  { label: 'Profile',      icon: '✦', href: '/profile' },
   { label: 'Settings',     icon: '⚙', href: '/settings' },
 ]
 
@@ -300,7 +302,8 @@ export default function NewProjectPage() {
   const readyCreate  = title.trim() && studyType
 
   return (
-    <div className="workspace-layout" style={{ background: '#080c18', fontFamily: "var(--font-inter), 'DM Sans', system-ui, sans-serif", color: '#f0e8d0' }}>
+    <div className="workspace-layout" style={{ position: 'relative', background: '#080c18', fontFamily: "var(--font-inter), 'DM Sans', system-ui, sans-serif", color: '#f0e8d0' }}>
+      <FloatingIcons />
 
       {/* SIDEBAR */}
       <aside className="workspace-sidebar">
