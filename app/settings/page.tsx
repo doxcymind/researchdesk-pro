@@ -20,6 +20,31 @@ export default function SettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState('')
   const [deleting, setDeleting] = useState(false)
   const [deleteError, setDeleteError] = useState<string | null>(null)
+  const [showCancelModal, setShowCancelModal] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const [cancelError, setCancelError] = useState<string | null>(null)
+
+  const handleCancelSubscription = async () => {
+    setCancelling(true)
+    setCancelError(null)
+    try {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session) return
+      const res = await fetch('/api/cashfree/cancel', {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      })
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}))
+        throw new Error(body?.error || 'Failed to cancel')
+      }
+      // Reload so the plan re-reads as Free.
+      window.location.reload()
+    } catch (e: any) {
+      setCancelError(e?.message || 'Something went wrong. Please try again.')
+      setCancelling(false)
+    }
+  }
 
   const handleDeleteAccount = async () => {
     if (deleteConfirm !== 'DELETE') return
@@ -131,7 +156,20 @@ export default function SettingsPage() {
               </p>
             </div>
             {isScholar ? (
-              <span style={{ fontSize: 13, color: 'rgba(240,232,208,0.4)', fontStyle: 'italic' }}>Active — renews monthly</span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
+                <span style={{ fontSize: 13, color: 'rgba(240,232,208,0.4)', fontStyle: 'italic' }}>Active — renews monthly</span>
+                <button onClick={() => setShowCancelModal(true)} style={{
+                  padding: '7px 16px', borderRadius: 9, background: 'transparent',
+                  border: '1px solid rgba(248,71,71,0.3)', color: 'rgba(248,113,113,0.85)',
+                  fontSize: 12, fontWeight: 600, cursor: 'pointer', fontFamily: inter,
+                  whiteSpace: 'nowrap', transition: 'all 0.2s',
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.background = 'rgba(248,71,71,0.08)'; e.currentTarget.style.borderColor = 'rgba(248,71,71,0.55)' }}
+                  onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.borderColor = 'rgba(248,71,71,0.3)' }}
+                >
+                  Cancel subscription
+                </button>
+              </div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column', gap: 8, alignItems: 'flex-end' }}>
                 <button onClick={handleUpgrade} disabled={checkoutLoading} style={{ padding: '10px 20px', borderRadius: 10, background: 'linear-gradient(135deg, #c9943a, #e8b84a)', color: '#080c18', fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: inter }}>
@@ -205,6 +243,36 @@ export default function SettingsPage() {
               <button onClick={handleDeleteAccount} disabled={deleteConfirm !== 'DELETE' || deleting}
                 style={{ flex: 1, padding: '10px', borderRadius: 9, background: deleteConfirm === 'DELETE' ? 'rgba(248,71,71,0.15)' : 'rgba(255,255,255,0.03)', border: `1px solid ${deleteConfirm === 'DELETE' ? 'rgba(248,71,71,0.5)' : 'rgba(255,255,255,0.08)'}`, color: deleteConfirm === 'DELETE' ? '#f87171' : 'rgba(240,232,208,0.2)', fontSize: 13, fontWeight: 700, cursor: deleteConfirm === 'DELETE' ? 'pointer' : 'not-allowed', fontFamily: inter, transition: 'all 0.2s' }}>
                 {deleting ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Subscription Modal */}
+      {showCancelModal && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 100,
+          background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20,
+        }}>
+          <div style={{
+            background: '#0c0e18', border: '1px solid rgba(248,71,71,0.25)',
+            borderRadius: 16, padding: '36px', maxWidth: 420, width: '100%',
+          }}>
+            <p style={{ fontSize: 18, fontWeight: 700, color: '#f0e8d0', margin: '0 0 10px', fontFamily: cinzel }}>Cancel your subscription?</p>
+            <p style={{ fontSize: 13, color: 'rgba(240,232,208,0.5)', margin: '0 0 24px', lineHeight: 1.7 }}>
+              Your Scholar access will end and you won&apos;t be billed again. You can resubscribe anytime.
+            </p>
+            {cancelError && <p style={{ fontSize: 12, color: '#f87171', margin: '0 0 12px' }}>{cancelError}</p>}
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button onClick={() => { setShowCancelModal(false); setCancelError(null) }}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', color: 'rgba(240,232,208,0.6)', fontSize: 13, cursor: 'pointer', fontFamily: inter }}>
+                Keep subscription
+              </button>
+              <button onClick={handleCancelSubscription} disabled={cancelling}
+                style={{ flex: 1, padding: '10px', borderRadius: 9, background: 'rgba(248,71,71,0.15)', border: '1px solid rgba(248,71,71,0.5)', color: '#f87171', fontSize: 13, fontWeight: 700, cursor: cancelling ? 'not-allowed' : 'pointer', fontFamily: inter, transition: 'all 0.2s' }}>
+                {cancelling ? 'Cancelling…' : 'Yes, cancel'}
               </button>
             </div>
           </div>
