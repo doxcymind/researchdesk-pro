@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { getAuthUser } from '@/lib/auth-helper'
+import { checkRateLimit } from '@/lib/rate-limit'
 import {
   Document, Packer, Paragraph, TextRun, HeadingLevel,
   AlignmentType, BorderStyle, PageBreak,
@@ -181,6 +182,9 @@ function htmlToDocxParagraphs(html: string, fmt: JournalFormat, section?: string
 export async function POST(req: NextRequest) {
   const user = await getAuthUser(req)
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await checkRateLimit(`${user.id}:export`, 20, 60000)
+  if (!allowed) return NextResponse.json({ error: 'Rate limit exceeded. Please wait a minute.' }, { status: 429 })
 
   try {
     const { projectId, projectTitle, studyType, sections } = await req.json()

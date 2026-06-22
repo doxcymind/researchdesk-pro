@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { geminiChat } from '@/lib/gemini'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,6 +21,9 @@ export async function POST(req: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+
+    const { allowed } = await checkRateLimit(`${user.id}:cover-letter`, 15, 60000)
+    if (!allowed) return NextResponse.json({ error: 'Rate limit exceeded. Please wait a minute.' }, { status: 429 })
 
     const { projectId, projectTitle, studyType, summary } = await req.json()
 
