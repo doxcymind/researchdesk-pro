@@ -1,6 +1,20 @@
 export const dynamic = 'force-dynamic'
 import crypto from 'crypto'
 import { createClient } from '@supabase/supabase-js'
+import { safeEqual } from '@/lib/verify'
+
+// Reject webhooks whose signed timestamp is older than this (replay protection).
+const MAX_WEBHOOK_AGE_MS = 5 * 60 * 1000
+
+// Cashfree sends x-webhook-timestamp as an epoch (seconds). Fall back to
+// ISO parsing so we stay correct regardless of format. Returns ms or NaN.
+function parseWebhookTimestamp(ts: string): number {
+  const asNum = Number(ts)
+  if (Number.isFinite(asNum) && ts.trim() !== '') {
+    return asNum < 1e12 ? asNum * 1000 : asNum // seconds vs milliseconds
+  }
+  return Date.parse(ts)
+}
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -20,8 +34,14 @@ export async function POST(req: Request) {
     .update(timestamp + raw)
     .digest('base64')
 
-  if (expected !== signature) {
+  if (!safeEqual(expected, signature)) {
     return Response.json({ error: 'Invalid signature' }, { status: 400 })
+  }
+
+  // Replay protection: reject stale (or missing/invalid) timestamps.
+  const tsMs = parseWebhookTimestamp(timestamp)
+  if (!Number.isFinite(tsMs) || Math.abs(Date.now() - tsMs) > MAX_WEBHOOK_AGE_MS) {
+    return Response.json({ error: 'Stale or invalid timestamp' }, { status: 400 })
   }
 
   const event = JSON.parse(raw)

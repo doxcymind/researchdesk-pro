@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { createServerClient } from '@supabase/ssr'
+import { hmacHex } from '@/lib/verify'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
@@ -45,9 +46,13 @@ export async function GET(request: NextRequest) {
     const now = Date.now()
     const isNewUser = now - createdAt < 30000 // within 30 seconds of signup
     if (isNewUser) {
+      const welcomeSig = hmacHex(user.email, process.env.SUPABASE_SERVICE_ROLE_KEY ?? '')
       fetch(`${origin}/api/welcome`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'x-welcome-signature': welcomeSig,
+        },
         body: JSON.stringify({ email: user.email, name: user.user_metadata?.full_name }),
       }).catch(() => {}) // fire and forget
     }

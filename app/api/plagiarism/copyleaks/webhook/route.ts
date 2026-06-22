@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
+import { hmacHex, safeEqual } from '@/lib/verify'
 
 function getAdmin() {
   return createClient(
@@ -12,6 +13,15 @@ export async function POST(req: Request) {
   const { searchParams } = new URL(req.url)
   const scanId = searchParams.get('scanId')
   if (!scanId) return new Response('ok', { status: 200 })
+
+  // Authenticate the callback: only our own server can produce a valid sig,
+  // since the webhook URL was signed with the Copyleaks API key at submit time.
+  // (Return 200 so a forged caller can't probe which scanIds exist.)
+  const sig = searchParams.get('sig') ?? ''
+  const secret = process.env.COPYLEAKS_KEY ?? ''
+  if (!secret || !safeEqual(hmacHex(scanId, secret), sig)) {
+    return new Response('ok', { status: 200 })
+  }
 
   let body: Record<string, any>
   try { body = await req.json() } catch { return new Response('ok', { status: 200 }) }

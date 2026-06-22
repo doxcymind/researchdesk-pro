@@ -1,10 +1,12 @@
 export const dynamic = 'force-dynamic'
 import { createClient } from '@supabase/supabase-js'
+import { safeEqual } from '@/lib/verify'
 
 export async function POST(req: Request) {
   const { email, secret } = await req.json()
 
-  if (secret !== process.env.ADMIN_SECRET) {
+  const adminSecret = process.env.ADMIN_SECRET
+  if (!adminSecret || typeof secret !== 'string' || !safeEqual(secret, adminSecret)) {
     return Response.json({ error: 'Forbidden' }, { status: 403 })
   }
 
