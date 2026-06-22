@@ -1,5 +1,5 @@
 import { getAuthUser } from '@/lib/auth-helper'
-import { rateLimit } from '@/lib/rate-limit'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { geminiChat } from '@/lib/gemini'
 import { isScholarServer } from '@/lib/check-subscription'
 import { createClient } from '@supabase/supabase-js'
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
   const scholar = await isScholarServer(user.id, user.email)
   if (!scholar) return Response.json({ error: 'Scholar plan required' }, { status: 403 })
 
-  const { allowed } = rateLimit(`${user.id}:generate`, 20, 60000)
+  const { allowed } = await checkRateLimit(`${user.id}:generate`, 20, 60000)
   if (!allowed) return Response.json({ error: 'Rate limit exceeded. Please slow down.' }, { status: 429 })
 
   try {

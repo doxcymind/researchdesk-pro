@@ -1,9 +1,13 @@
 import { getAuthUser } from '@/lib/auth-helper'
 import { geminiChat } from '@/lib/gemini'
+import { checkRateLimit } from '@/lib/rate-limit'
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { allowed } = await checkRateLimit(`${user.id}:uploads-suggest`, 20, 60000)
+  if (!allowed) return Response.json({ error: 'Rate limit exceeded. Please wait a minute.' }, { status: 429 })
 
   let title: string, studyType: string
   try {

@@ -1,5 +1,5 @@
 import { getAuthUser } from '@/lib/auth-helper'
-import { rateLimit } from '@/lib/rate-limit'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { isScholarServer } from '@/lib/check-subscription'
 import { createClient } from '@supabase/supabase-js'
 import { hmacHex } from '@/lib/verify'
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
     return Response.json({ error: 'Copyleaks is not configured. Please contact support.' }, { status: 503 })
   }
 
-  const { allowed } = rateLimit(`${user.id}:copyleaks`, 5, 60000)
+  const { allowed } = await checkRateLimit(`${user.id}:copyleaks`, 5, 60000)
   if (!allowed) return Response.json({ error: 'Rate limit exceeded. Please wait a minute.' }, { status: 429 })
 
   let text: string

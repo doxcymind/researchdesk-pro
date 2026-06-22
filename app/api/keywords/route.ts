@@ -1,12 +1,12 @@
 import { getAuthUser } from '@/lib/auth-helper'
-import { rateLimit } from '@/lib/rate-limit'
+import { checkRateLimit } from '@/lib/rate-limit'
 import { geminiChat } from '@/lib/gemini'
 
 export async function POST(req: Request) {
   const user = await getAuthUser(req)
   if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { allowed } = rateLimit(`${user.id}:keywords`, 15, 60000)
+  const { allowed } = await checkRateLimit(`${user.id}:keywords`, 15, 60000)
   if (!allowed) return Response.json({ error: 'Rate limit exceeded.' }, { status: 429 })
 
   try {
