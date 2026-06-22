@@ -2,6 +2,7 @@ import { getAuthUser } from '@/lib/auth-helper'
 import { rateLimit } from '@/lib/rate-limit'
 import { isScholarServer } from '@/lib/check-subscription'
 import { createClient } from '@supabase/supabase-js'
+import { hmacHex } from '@/lib/verify'
 
 const COPYLEAKS_EMAIL = process.env.COPYLEAKS_EMAIL
 const COPYLEAKS_KEY   = process.env.COPYLEAKS_KEY
@@ -56,6 +57,11 @@ export async function POST(req: Request) {
 
   const truncated = text.slice(0, 25000)
   const scanId    = `rd-${user.id.slice(0, 8)}-${Date.now()}`
+  // Sign the webhook URL so the callback handler can verify it came from us.
+  const webhookSig = hmacHex(scanId, COPYLEAKS_KEY)
+  const webhookUrl =
+    `${SITE_URL}/api/plagiarism/copyleaks/webhook` +
+    `?scanId=${encodeURIComponent(scanId)}&sig=${webhookSig}`
 
   try {
     const token = await getCopyleaksToken()
@@ -71,9 +77,9 @@ export async function POST(req: Request) {
           filename: `manuscript_${scanId}.txt`,
           properties: {
             webhooks: {
-              status:    `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
-              completed: `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
-              error:     `${SITE_URL}/api/plagiarism/copyleaks/webhook?scanId=${encodeURIComponent(scanId)}`,
+              status:    webhookUrl,
+              completed: webhookUrl,
+              error:     webhookUrl,
             },
             sensitiveDataProtection: { anonymizeText: true },
             scanning: { internet: true, copyleaksDatabaseAccess: true },

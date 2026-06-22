@@ -1,7 +1,11 @@
 export const dynamic = 'force-dynamic'
 import { geminiChat } from '@/lib/gemini'
+import { getAuthUser } from '@/lib/auth-helper'
 
 export async function POST(req: Request) {
+  const user = await getAuthUser(req)
+  if (!user) return Response.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { title } = await req.json()
   if (!title?.trim()) return Response.json({ query: null })
 
