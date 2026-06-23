@@ -1,10 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Resend } from 'resend'
 import { render } from '@react-email/render'
 import { WelcomeEmail } from '@/lib/emails/WelcomeEmail'
 import { hmacHex, safeEqual } from '@/lib/verify'
-
-const resend = new Resend(process.env.RESEND_API_KEY ?? 're_placeholder')
+import { resend, EMAIL_FROM } from '@/lib/email'
 
 export async function POST(req: NextRequest) {
   try {
@@ -23,7 +21,7 @@ export async function POST(req: NextRequest) {
     const html = await render(WelcomeEmail({ name }))
 
     await resend.emails.send({
-      from: 'ResearchDesk Pro <onboarding@resend.dev>',
+      from: EMAIL_FROM,
       to: email,
       subject: `Welcome to ResearchDesk Pro — let's write your first manuscript`,
       html,

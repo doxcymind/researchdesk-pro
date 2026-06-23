@@ -1,5 +1,5 @@
-import { Resend } from 'resend'
 import { NextRequest, NextResponse } from 'next/server'
+import { resend, EMAIL_FROM, EMAIL_FROM_CONTACT } from '@/lib/email'
 
 export const dynamic = 'force-dynamic'
 
@@ -50,10 +50,8 @@ export async function POST(req: NextRequest) {
     const safeTopic   = esc(topic)
     const safeMessage = esc(message)
 
-    const resend = new Resend(process.env.RESEND_API_KEY)
-
     await resend.emails.send({
-      from: 'ResearchDesk Contact <onboarding@resend.dev>',
+      from: EMAIL_FROM_CONTACT,
       to: [CONTACT_EMAIL],
       replyTo: email,
       subject: `[ResearchDesk] ${safeTopic} — from ${safeName}`,
@@ -75,7 +73,7 @@ export async function POST(req: NextRequest) {
 
     // Auto-reply to sender
     await resend.emails.send({
-      from: 'ResearchDesk <onboarding@resend.dev>',
+      from: EMAIL_FROM,
       to: [email],
       subject: 'We received your message — ResearchDesk',
       html: `

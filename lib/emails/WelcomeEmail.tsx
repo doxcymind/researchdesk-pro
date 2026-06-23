@@ -15,10 +15,10 @@ export function WelcomeEmail({ name }: WelcomeEmailProps) {
       </head>
       <body style={{
         margin: 0, padding: 0,
-        backgroundColor: '#07090f',
+        backgroundColor: '#080C18',
         fontFamily: "'DM Sans', system-ui, sans-serif",
       }}>
-        <table width="100%" cellPadding={0} cellSpacing={0} style={{ backgroundColor: '#07090f', padding: '40px 20px' }}>
+        <table width="100%" cellPadding={0} cellSpacing={0} style={{ backgroundColor: '#080C18', padding: '40px 20px' }}>
           <tr>
             <td align="center">
               <table width="600" cellPadding={0} cellSpacing={0} style={{
@@ -37,6 +37,7 @@ export function WelcomeEmail({ name }: WelcomeEmailProps) {
                     padding: '32px 40px',
                     textAlign: 'center',
                   }}>
+                    <div style={{ fontSize: 18, color: '#c9943a', marginBottom: 8, lineHeight: 1 }}>✦</div>
                     <div style={{
                       fontSize: 26, fontWeight: 700, letterSpacing: '0.04em',
                       color: '#f0e8d0',
@@ -55,8 +56,8 @@ export function WelcomeEmail({ name }: WelcomeEmailProps) {
                       Welcome, {firstName}. 👋
                     </p>
                     <p style={{ fontSize: 15, color: 'rgba(200,175,130,0.7)', margin: '0 0 32px', lineHeight: 1.7 }}>
-                      You&apos;re now part of ResearchDesk Pro — the smartest way to write medical research.
-                      Here&apos;s how to get started in the next 5 minutes.
+                      You&apos;re in. ResearchDesk Pro turns the blank page into a finished manuscript —
+                      case reports, reviews, theses and more. Here&apos;s how to start your first paper in the next 5 minutes.
                     </p>
 
                     {/* Steps */}
