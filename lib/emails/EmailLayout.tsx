@@ -5,7 +5,7 @@ import * as React from 'react'
  * Dark navy (#080C18) + gold (#c9943a) + cream (#f0e8d0), table-based for
  * email-client compatibility. Use the H1 / P / CTA helpers for consistency.
  */
-export function EmailShell({ children }: { children: React.ReactNode }) {
+export function EmailShell({ children, unsubscribeUrl }: { children: React.ReactNode; unsubscribeUrl?: string }) {
   return (
     <html>
       <head>
@@ -55,6 +55,14 @@ export function EmailShell({ children }: { children: React.ReactNode }) {
                       <a href="https://researchdeskpro.com" style={{ color: 'rgba(201,148,58,0.4)', textDecoration: 'none' }}>
                         researchdeskpro.com
                       </a>
+                      {unsubscribeUrl ? (
+                        <>
+                          {' · '}
+                          <a href={unsubscribeUrl} style={{ color: 'rgba(200,175,130,0.3)', textDecoration: 'underline' }}>
+                            Unsubscribe
+                          </a>
+                        </>
+                      ) : null}
                     </p>
                   </td>
                 </tr>

@@ -2,9 +2,10 @@ import * as React from 'react'
 
 interface WelcomeEmailProps {
   name?: string
+  unsubscribeUrl?: string
 }
 
-export function WelcomeEmail({ name }: WelcomeEmailProps) {
+export function WelcomeEmail({ name, unsubscribeUrl }: WelcomeEmailProps) {
   const firstName = name?.split(' ')[0] || 'Researcher'
 
   return (
@@ -121,6 +122,14 @@ export function WelcomeEmail({ name }: WelcomeEmailProps) {
                       <a href="https://researchdeskpro.com" style={{ color: 'rgba(201,148,58,0.4)', textDecoration: 'none' }}>
                         researchdeskpro.com
                       </a>
+                      {unsubscribeUrl ? (
+                        <>
+                          {' · '}
+                          <a href={unsubscribeUrl} style={{ color: 'rgba(200,175,130,0.3)', textDecoration: 'underline' }}>
+                            Unsubscribe
+                          </a>
+                        </>
+                      ) : null}
                     </p>
                   </td>
                 </tr>
