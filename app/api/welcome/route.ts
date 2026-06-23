@@ -3,6 +3,7 @@ import { render } from '@react-email/render'
 import { WelcomeEmail } from '@/lib/emails/WelcomeEmail'
 import { hmacHex, safeEqual } from '@/lib/verify'
 import { resend, EMAIL_FROM } from '@/lib/email'
+import { welcomeSequence } from '@/lib/emails/sequence'
 
 export async function POST(req: NextRequest) {
   try {
@@ -26,6 +27,26 @@ export async function POST(req: NextRequest) {
       subject: `Welcome to ResearchDesk Pro — let's write your first manuscript`,
       html,
     })
+
+    // Schedule the onboarding drip (emails 2–5) via Resend's scheduledAt.
+    // Isolated so a scheduling hiccup never fails the immediate welcome email.
+    try {
+      const DAY_MS = 86_400_000
+      await Promise.all(
+        welcomeSequence.map(async (item) => {
+          const body = await render(item.build(name))
+          return resend.emails.send({
+            from: EMAIL_FROM,
+            to: email,
+            subject: item.subject,
+            html: body,
+            scheduledAt: new Date(Date.now() + item.dayOffset * DAY_MS).toISOString(),
+          })
+        })
+      )
+    } catch (seqErr) {
+      console.error('Welcome sequence scheduling error:', seqErr)
+    }
 
     return NextResponse.json({ success: true })
   } catch (err) {
