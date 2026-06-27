@@ -275,26 +275,20 @@ export default function EditorPanel({
     },
   })
 
-  // Sync external content changes (section switch + initial load) into TipTap
-  const lastSection = useRef(selectedSection)
-  const isInitialized = useRef(false)
+  // Keep TipTap in sync with the `content` prop, which the parent treats as the
+  // single source of truth (it clears to '' on section switch, then loads from DB).
+  // Reconciling directly against `content` — rather than tracking section changes —
+  // avoids an effect-ordering race where the child effect ran before the parent had
+  // cleared `content`, leaving the previous section's text visible in empty sections.
   useEffect(() => {
     if (!editor) return
-    // Initial load: content arrives from DB after editor mounts
-    if (!isInitialized.current) {
-      if (content) {
-        isInitialized.current = true
-        editor.commands.setContent(content)
-      }
-      return
+    // Editor represents an empty doc as '<p></p>'; treat that as equal to ''.
+    const current = editor.getHTML()
+    const normalizedCurrent = current === '<p></p>' ? '' : current
+    if ((content || '') !== normalizedCurrent) {
+      editor.commands.setContent(content || '', { emitUpdate: false })
     }
-    // Section switch: load new section's content
-    if (lastSection.current !== selectedSection) {
-      lastSection.current = selectedSection
-      isInitialized.current = false // reset so next content load triggers hydration
-      editor.commands.setContent(content || '')
-    }
-  }, [selectedSection, content, editor])
+  }, [content, editor])
 
   const plainText = content.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
   const count = wordCount(content)
